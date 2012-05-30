@@ -1,0 +1,55 @@
+== Game#event ==
+
+*loop
+  loop(30fps?)
+  
+*entry(user)
+  New user appeared
+
+anything you want!
+
+== Game.View#event ==
+
+*loop
+  loop
+
+== instance ==
+*internal
+  only-server loop
+*loop
+  loop
+
+*render
+  only-client.
+  draw
+
+*die
+  dies
+
+*(anything)
+  anything you want!
+
+---------------------------------- memo
+Game-add-data instance
+*_event: EventEmitter
+*_flg_dying
+
+
+
+
+---------------------------------- memo
+[Game]<=========>[Brain] - - - - - (View)   /  (Server)
+                    |
+    (Game)- - -->[Brain]==========>[View]   /  (Client)
+                    |
+                    |
+                 [Userr]
+
+---------------------------------- trash
+
+[Game] ========> [Brain]========>[View] (Server)
+  ^                 |
+  |                 +-----~~~~~->[View] (Client)
+ ~~~
+  |
+[User]
