@@ -1,0 +1,9 @@
+!!! 5
+html
+  head
+    meta(charset="UTF-8")
+    title= title
+  body
+    each filename in scripts
+      script(src="#{scriptsdir}/#{filename}",type="text/javascript")
+

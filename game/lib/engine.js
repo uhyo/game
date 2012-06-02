@@ -1,3 +1,7 @@
+if(typeof require=="function" && typeof EventEmitter=="undefined"){
+	EventEmitter=require('events').EventEmitter;
+}
+
 function Game(){
 	this.config=Game.util.clone(this.defaultConfig);
 	
@@ -7,7 +11,7 @@ function Game(){
 	
 	this.delays=[];	//{remains:frame, func:()}
 	
-	this.store={};	//ƒf[ƒ^ƒXƒgƒAiServer—pj
+	this.store={};	//ãƒ‡ãƒ¼ã‚¿ã‚¹ãƒˆã‚¢ï¼ˆServerç”¨ï¼‰
 }
 Game.util={
 	clone:function(obj){
@@ -84,7 +88,7 @@ Game.prototype={
 				i--,l--;
 			}
 		}
-		//delay‚Ìˆ—
+		//delayã®å‡¦ç†
 		arr=this.delays;
 		for(i=0,l=arr.length;i<l;i++){
 			if(--arr[i].remains <= 0){
@@ -101,7 +105,7 @@ Game.prototype={
 			throw new Error;
 		}
 		
-		//’Ê’mƒCƒxƒ“ƒg
+		//é€šçŸ¥ã‚¤ãƒ™ãƒ³ãƒˆ
 		var instance = new EventEmitter();
 		
 		var datastore=Game.util.clone(param);
@@ -128,25 +132,25 @@ Game.prototype={
 	filter:function(func){
 		return this.objects.filter(function(x){return x instanceof func});
 	},
-	//ˆê‚Â
+	//ä¸€ã¤
 	random:function(func){
 		var arr=this.filter(func);
 		if(arr.length==0)return null;
 		return arr[Math.floor(Math.random()*arr.length)];
 	},
-	//‘S•”íœi‚©‚ç‚Á‚Ûj
+	//å…¨éƒ¨å‰Šé™¤ï¼ˆã‹ã‚‰ã£ã½ï¼‰
 	clean:function(){
 		//this.objects.length=0;
 		for(var i=0,l=this.objects.length;i<l;i++){
 			this.objects[i]._flg_dying=true;
 		}
 	},
-	//‚»‚ÌƒIƒuƒWƒFƒNƒg‚ª‚Ü‚¾‘¶İ‚µ‚Ä‚¢‚é‚©‚Ç‚¤‚©
+	//ãã®ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆãŒã¾ã å­˜åœ¨ã—ã¦ã„ã‚‹ã‹ã©ã†ã‹
 	alive:function(obj){
 		return this.objects.indexOf(obj)>=0;
 	},
 	
-	//ŠÖ”“o˜^
+	//é–¢æ•°ç™»éŒ²
 	delay:function(time,func){
 		this.delays.push({
 			remains:time,
@@ -221,7 +225,7 @@ Game.User.prototype={
 		var ev=this.event=new EventEmitter();
 		
 		this.waitingkey=[];
-		//ƒL[ƒCƒxƒ“ƒg’è‹`
+		//ã‚­ãƒ¼ã‚¤ãƒ™ãƒ³ãƒˆå®šç¾©
 		document.addEventListener('keydown',function(e){
 			if(this.waitingkey.indexOf(e.keyCode)>=0){
 				ev.emit('keydown',e);
@@ -239,3 +243,7 @@ Game.User.prototype={
 	},
 };
 
+if(typeof exports=="object" && exports){
+	//exportã§ãã‚‹
+	exports.Game=Game;
+}
