@@ -1,4 +1,5 @@
 {
   "name":"game",
-  "main":"./lib/game.js"
+  "main":"./lib/game.js",
+  "version":"0.0.1"
 }

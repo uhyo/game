@@ -2,6 +2,9 @@ if(typeof require=="function" && typeof EventEmitter=="undefined"){
 	EventEmitter=require('events').EventEmitter;
 }
 
+//外部へ情報を送れるやつ
+var gaminginfo=new EventEmitter;
+
 function Game(){
 	this.config=Game.util.clone(this.defaultConfig);
 	
@@ -12,6 +15,11 @@ function Game(){
 	this.delays=[];	//{remains:frame, func:()}
 	
 	this.store={};	//データストア（Server用）
+	//ユーザー
+	this.defaultUser=Game.User;
+	//できた
+	gaminginfo.emit("new",this);
+
 }
 Game.util={
 	clone:function(obj){
@@ -53,9 +61,13 @@ Game.prototype={
 	},
 	start:function(){
 		//hard
-		var user=new Game.User();
+		//var user=new Game.User();
+		var user=new (this.defaultUser)();
 		user.init();
 		this.event.emit("entry",user);
+	},
+	useUser:function(userobj){
+		this.defaultUser=userobj;
 	},
 	//start loop
 	loop:function(){
@@ -221,6 +233,17 @@ Game.ClientCanvasView.prototype=Game.util.merge(new Game.ClientView,{
 Game.User=function(){
 };
 Game.User.prototype={
+	init:function(){},
+};
+Game.ClientUser=function(){
+};
+Game.ClientUser.prototype={
+	init:function(){},
+};
+Game.KeyboardUser=function(){
+	Game.User.apply(this,arguments);
+};
+Game.KeyboardUser.prototype=Game.extend(Game.User,{
 	init:function(){
 		var ev=this.event=new EventEmitter();
 		
@@ -241,9 +264,10 @@ Game.User.prototype={
 	keyWait:function(arr){
 		this.waitingkey=arr;
 	},
-};
+});
 
 if(typeof exports=="object" && exports){
 	//exportできる
 	exports.Game=Game;
+	exports.gaminginfo=gaminginfo;
 }

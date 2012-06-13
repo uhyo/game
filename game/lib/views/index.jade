@@ -3,7 +3,11 @@ html
   head
     meta(charset="UTF-8")
     title= title
+    script(src="/socket.io/socket.io.js")
   body
     each filename in scripts
       script(src="#{scriptsdir}/#{filename}",type="text/javascript")
+    
+    
+
 
