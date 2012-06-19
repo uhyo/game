@@ -1,5 +1,5 @@
 //node-game
-var ev=require('events'), path=require('path'), express=require('express');
+var ev=require('events'), path=require('path'), express=require('express'), socketio=require('socket.io');
 var gameengine=require('./engine.js');
 //サーバー用差分
 var Game=gameengine.Game;
@@ -12,11 +12,11 @@ exports.Server=function(){
 }
 exports.Server.prototype=Game.util.extend(ev.EventEmitter,{
 	init:function(gamefile,options){
+		//サーバー起動
+		this.initServer(options);
 		//ゲーム起動
 		this.gamefile=path.join(path.dirname(require.main.filename),gamefile);
 		require(this.gamefile);
-		//サーバー起動
-		this.initServer(options);
 
 	},
 	initServer:function(options){
@@ -29,9 +29,11 @@ exports.Server.prototype=Game.util.extend(ev.EventEmitter,{
 		});
 		app.use(app.router);
 		app.get('/',function(req,res){
+			//順番が大事かもしれない
 			res.render('index',{scriptsdir:"/script",title:options.title,scripts:[
 				"EventEmitter.min.js",
 				"engine.js",
+				"client.js",
 				"game.js"]});
 		});
 		app.get('/script/:file',function(req,res,next){
@@ -47,6 +49,9 @@ exports.Server.prototype=Game.util.extend(ev.EventEmitter,{
 				case 'game.js':
 					filename=this.gamefile;
 					break;
+				case 'client.js':
+					filename='./client.js';
+					break;
 			}
 			if(!filename){
 				next();
@@ -59,5 +64,33 @@ exports.Server.prototype=Game.util.extend(ev.EventEmitter,{
 
 		}.bind(this));
 		app.listen(options.port || 80);
+		var io=socketio.listen(app);
+
+		this.initSocket(io);
+	},
+	initSocket:function(io){
+		var gaminginfo=gameengine.gaminginfo;
+
+		gaminginfo.on("new",function(game){
+			//新しいインスタンスができた
+			//ゲーム用
+			gaminginfo.on("broadcast",function(name,obj){
+				io.sockets.emit(name,obj);
+			});
+			io.sockets.on("connection",function(socket){
+				//ユーザーの襲来
+				//ここでユーザーに現在の状況を教える
+				var env=game.wholeEnvironment();
+				socket.emit("init",env);
+				//ユーザー入力のイベント
+				var event=new EventEmitter();
+				socket.on("entry",function(){
+					// ユーザーを教えてあげる
+					//（サーバー側用ユーザーオブジェクト作成）
+					game.event.emit("entry",game.newUser(event));
+				});
+			});
+		});
+
 	},
 });

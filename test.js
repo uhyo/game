@@ -525,7 +525,7 @@ function Boss1(game,event,param){
 	});
 }
 Boss1.prototype=Game.util.extend(Boss,{
-	score:1000,
+	score:1200,
 });
 //周りを回る敵
 function EnemyAttendantRound(game,event,param){
@@ -540,11 +540,12 @@ function EnemyAttendantRound(game,event,param){
 	t.parent=param.parent;	//Enemy
 	var maxradius=param.radius || t.radius;
 	t.radius=0;	//最初は真ん中に
+	t.x=t.parent.x, t.y=t.parent.y;
 	
 	event.on("loop",function(){
 		//回る
 		t.angle+=t.av;
-		if(t.angle>=Math.PI*2)t.algle-=Math.PI*2;
+		if(t.angle>=Math.PI*2)t.angle-=Math.PI*2;
 		
 		var pc=t.parent.center();
 		t.x = pc.x+Math.cos(t.angle)*t.radius -t.width/2;
@@ -805,7 +806,7 @@ game.init(Game.ClientCanvasView,{
 	width:650,
 	height:450,
 });
-
+game.useUser(Game.KeyboardUser);
 
 game.event.on("entry",function(user){
 	//新しいユーザー
@@ -822,7 +823,7 @@ game.add(ScoreDisplay,{});
 game.add(EffectProcessor,{});
 
 //スコア管理
-game.store.score=0;
+game.store.score=1200;
 game.event.on("getscore",function(delta){
 	game.store.score+=delta;
 });

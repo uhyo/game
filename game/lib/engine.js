@@ -2,6 +2,9 @@ if(typeof require=="function" && typeof EventEmitter=="undefined"){
 	EventEmitter=require('events').EventEmitter;
 }
 
+//外部へ情報を送れるやつ
+var gaminginfo=new EventEmitter;
+
 function Game(){
 	this.config=Game.util.clone(this.defaultConfig);
 	
@@ -12,6 +15,12 @@ function Game(){
 	this.delays=[];	//{remains:frame, func:()}
 	
 	this.store={};	//データストア（Server用）
+	//ユーザー
+	this.defaultUser=Game.User;
+	//できた
+	this.gaminginfo=gaminginfo;
+	gaminginfo.emit("new",this);
+
 }
 Game.util={
 	clone:function(obj){
@@ -53,9 +62,17 @@ Game.prototype={
 	},
 	start:function(){
 		//hard
-		var user=new Game.User();
-		user.init();
+		//var user=new Game.User();
+		var user=this.newUser();
 		this.event.emit("entry",user);
+	},
+	newUser:function(){
+		var user=new (this.defaultUser)();
+		user.init();
+		return user;
+	},
+	useUser:function(userobj){
+		this.defaultUser=userobj;
 	},
 	//start loop
 	loop:function(){
@@ -99,7 +116,7 @@ Game.prototype={
 		}
 	},
 	
-	//objects
+	//objects return:internal object
 	add:function(constructor,param){
 		if(typeof constructor!=="function"){
 			throw new Error;
@@ -115,6 +132,10 @@ Game.prototype={
 		//d.event = instance;
 		Object.defineProperty(d,"event",{
 			value:instance,
+		});
+		//コンストラクタを保存
+		Object.defineProperty(d,"_constructor",{
+			value:constructor,
 		});
 		
 		this.initObject(d);
@@ -219,10 +240,24 @@ Game.ClientCanvasView.prototype=Game.util.merge(new Game.ClientView,{
 
 //User input
 Game.User=function(){
+	this.event=new EventEmitter();
 };
 Game.User.prototype={
+	init:function(){},
+};
+Game.ClientUser=function(){
+	Game.User.apply(this,arguments);
+};
+Game.ClientUser.prototype=Game.util.extend(Game.User,{
+	init:function(){},
+});
+Game.KeyboardUser=function(){
+	Game.ClientUser.apply(this,arguments);
+};
+Game.KeyboardUser.prototype=Game.util.extend(Game.ClientUser,{
 	init:function(){
-		var ev=this.event=new EventEmitter();
+		//var ev=this.event=new EventEmitter();
+		var ev=this.event;
 		
 		this.waitingkey=[];
 		//キーイベント定義
@@ -241,9 +276,10 @@ Game.User.prototype={
 	keyWait:function(arr){
 		this.waitingkey=arr;
 	},
-};
+});
 
 if(typeof exports=="object" && exports){
 	//exportできる
 	exports.Game=Game;
+	exports.gaminginfo=gaminginfo;
 }
