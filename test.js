@@ -448,7 +448,7 @@ function Boss1(game,event,param){
 	
 	var children=[];
 	
-	var movup=true;	//上へ
+	t.movup=true;	//上へ
 	
 	var atkwait=14, count=atkwait;
 	
@@ -504,15 +504,15 @@ function Boss1(game,event,param){
 			break;
 		case 2:
 			//上下移動
-			if(movup){
+			if(t.movup){
 				t.y-=4;
 				if(t.y<30){
-					movup=false;
+					t.movup=false;
 				}
 			}else{
 				t.y+=4;
 				if(t.y>game.height-40){
-					movup=true;
+					t.movup=true;
 				}
 			}
 			break;
@@ -798,6 +798,24 @@ function AnnounceDisplay(game,event,param){
 		ctx.fillText(t.str,t.x,t.y);
 	});
 }
+//fps
+function FPSChecker(game,event,param){
+	var t=this;
+	t.time=Date.now();
+	t.count=0;
+	t.fpssum=0;
+	event.on("loop",function(){
+		var now=Date.now();
+		var d=now-t.time;	//今回の時間
+		t.fpssum = (t.fpssum*t.count+d)/(++t.count);
+		if(t.count>=30){
+			console.log("fps="+(1000/t.fpssum));
+			t.count=0, t.fpssum=0;
+		}
+		t.time=now;
+	});
+
+}
 
 //settings
 game.width=650, game.height=450;
@@ -821,6 +839,7 @@ game.add(EnemyGenerator);
 game.add(ScoreDisplay,{});
 
 game.add(EffectProcessor,{});
+game.add(FPSChecker,{});
 
 //スコア管理
 game.store.score=1200;

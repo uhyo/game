@@ -61,6 +61,8 @@ Game.prototype.jsonFilter=function(obj){
 			$type:"obj",
 			constructorName:obj._constructor.name,
 			properties:this.propertiesJSON(obj),
+			_param:this.propertiesJSON(obj._param || {}),
+			_id:obj._id,
 		};
 	}
 	for(var key in obj){
@@ -73,7 +75,7 @@ Game.prototype.jsonFilter=function(obj){
 	return result;
 };
 Game.prototype.propertiesJSON=function(obj){
-	var keys=Object.getOwnPropertyNames(obj);
+	var keys=Object.keys(obj);
 	var result={};
 	for(var i=0,l=keys.length;i<l;i++){
 		var k=keys[i];

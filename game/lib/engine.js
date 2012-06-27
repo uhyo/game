@@ -137,6 +137,10 @@ Game.prototype={
 		Object.defineProperty(d,"_constructor",{
 			value:constructor,
 		});
+		//パラメータを保存
+		Object.defineProperty(d,"_param",{
+			value:Game.util.clone(param),
+		});
 		
 		this.initObject(d);
 
