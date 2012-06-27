@@ -13,7 +13,6 @@ gaminginfo.on("new",function(game){
 	});
 	socket.on("init",function(env){
 		//現在の状況すべて
-		console.log("init!");
 		game.objects.length=0;
 		//console.log(env);
 		for(var i=0,l=env.length;i<l;i++){
@@ -49,7 +48,7 @@ function executeJSON(game,obj){
 		//何か
 		var constructor=window[obj.constructorName];
 		if(!constructor)throw new Error(obj.constructorName);
-		console.log("$obj!",JSON.stringify(obj));
+		//console.log("$obj!",JSON.stringify(obj));
 		var o=game._old_add(constructor,executeJSON(game,obj.properties));
 		return o;
 	}else if(Array.isArray(obj)){

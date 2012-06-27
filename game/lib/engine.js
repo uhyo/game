@@ -63,12 +63,6 @@ Game.prototype={
 	start:function(){
 		//hard
 		//var user=new Game.User();
-<<<<<<< HEAD
-		var user=new (this.defaultUser)();
-		user.init();
-		this.event.emit("entry",user);
-	},
-=======
 		var user=this.newUser();
 		this.event.emit("entry",user);
 	},
@@ -77,7 +71,6 @@ Game.prototype={
 		user.init();
 		return user;
 	},
->>>>>>> 13ddb72b024f09f1f0c99ccfd6a66710f3cba031
 	useUser:function(userobj){
 		this.defaultUser=userobj;
 	},
@@ -253,16 +246,6 @@ Game.User.prototype={
 	init:function(){},
 };
 Game.ClientUser=function(){
-<<<<<<< HEAD
-};
-Game.ClientUser.prototype={
-	init:function(){},
-};
-Game.KeyboardUser=function(){
-	Game.User.apply(this,arguments);
-};
-Game.KeyboardUser.prototype=Game.extend(Game.User,{
-=======
 	Game.User.apply(this,arguments);
 };
 Game.ClientUser.prototype=Game.util.extend(Game.User,{
@@ -272,7 +255,6 @@ Game.KeyboardUser=function(){
 	Game.ClientUser.apply(this,arguments);
 };
 Game.KeyboardUser.prototype=Game.util.extend(Game.ClientUser,{
->>>>>>> 13ddb72b024f09f1f0c99ccfd6a66710f3cba031
 	init:function(){
 		//var ev=this.event=new EventEmitter();
 		var ev=this.event;

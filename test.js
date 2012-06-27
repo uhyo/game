@@ -832,13 +832,13 @@ game.event.on("over",function(user){
 	//死んだ
 	var arr=game.filter(MyMachine);
 	arr=arr.filter(function(x){return x!=user});
-	if(arr.length==0){
+	/*if(arr.length==0){
 		//もういない
 		game.delay(45,function(){
 			game.clean();
 			game.add(GameOverDisplay,{});
 		});
-	}
+	}*/
 });
 
 game.start();
