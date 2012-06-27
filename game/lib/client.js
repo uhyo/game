@@ -14,6 +14,7 @@ gaminginfo.on("new",function(game){
 	socket.on("init",function(env){
 		//現在の状況すべて
 		console.log("init!");
+		console.log(JSON.stringify(env));
 		game.objects.length=0;
 		//console.log(env);
 		for(var i=0,l=env.length;i<l;i++){
@@ -49,8 +50,16 @@ function executeJSON(game,obj){
 		//何か
 		var constructor=window[obj.constructorName];
 		if(!constructor)throw new Error(obj.constructorName);
-		console.log("$obj!",JSON.stringify(obj));
-		var o=game._old_add(constructor,executeJSON(game,obj.properties));
+		//既存のオブジェクトかどうかチェック
+		for(var i=0,l=game.objects.length;i<l;i++){
+			//既にある
+			if(game.objects[i]._id==obj._id){
+				return game.objects[i];
+			}
+		}
+		var o=game._old_add(constructor,executeJSON(game,obj._param));
+		//現在のパラメータ反映
+		setProperties(o,obj.properties);
 		return o;
 	}else if(Array.isArray(obj)){
 		return obj.map(function(x){return executeJSON(game,x)});
@@ -66,7 +75,7 @@ function executeJSON(game,obj){
 	function setProperties(obj,map){
 		for(var key in map){
 			var value=map[key];
-			obj[key]=value;
+			obj[key]=executeJSON(game,value);
 		}
 	}
 }
