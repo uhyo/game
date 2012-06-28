@@ -89,6 +89,11 @@ exports.Server.prototype=Game.util.extend(ev.EventEmitter,{
 					//（サーバー側用ユーザーオブジェクト作成）
 					game.event.emit("entry",game.newUser(event));
 				});
+				//クライアント側で起きたイベント
+				socket.on("userevent",function(obj){
+					if(!obj || !obj.args)return;
+					event.emit.apply(event,[obj.name].concat(obj.args));
+				});
 			});
 		});
 

@@ -1,0 +1,9 @@
+== socket connection ==
+[S->C] init [obj,obj,obj,...] / env
+[C->S] entry {} / user entry
+
+[C->S] userevent {
+        name:"eventname"
+        args:[Object,Object,...]
+    } / client-emitting event
+

@@ -35,6 +35,11 @@ Game.prototype.start=function(){
 Game.prototype._old_add=Game.prototype.add;
 //クライアント側からは追加できない
 Game.prototype.add=function(){};
+//ユーザーに細工する
+Game.prototype.newUser=function(){
+	var user=new (this.defaultUser)();
+
+};
 
 //向こうの特殊形式を戻す
 function executeJSON(game,obj){
