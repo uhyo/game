@@ -455,11 +455,6 @@ function Boss1(game,event,param){
 	event.on("internal",function(){
 		//進行判定
 		switch(t.mode){
-		case 0:
-			if(t.x <= game.width-t.width*2){
-				event.emit("modechange",1);
-			}
-			break;
 		case 1:
 			//敵出現
 			children.length=0;
@@ -499,7 +494,8 @@ function Boss1(game,event,param){
 			//登場
 			t.x -= 5;
 			if(t.x <= game.width-t.width*2){
-				t.mode=1;
+				//t.mode=1;
+				event.emit("modechange",1);
 			}
 			break;
 		case 2:
@@ -839,7 +835,7 @@ game.add(EnemyGenerator);
 game.add(ScoreDisplay,{});
 
 game.add(EffectProcessor,{});
-game.add(FPSChecker,{});
+//game.add(FPSChecker,{});
 
 //スコア管理
 game.store.score=1200;
@@ -861,6 +857,9 @@ game.event.on("over",function(user){
 });
 
 game.start();
+
+//config
+game.config.fps=30;
 
 game.loop();
 

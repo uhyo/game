@@ -77,18 +77,25 @@ Game.prototype={
 	//start loop
 	loop:function(){
 		
-		var wait=1000/this.config.fps;
+		var fps=this.config.fps;
 		var self=this;
 		var ev=this.event;
 		
+		//時間カウント
+		var frametime=1000/fps;
+		var ticktime=Date.now();
 		ev.on("loop",this.mainloop.bind(this));
 		
-		loop();
+		loop(true);
 		
 		//main loop
-		function loop(){
+		function loop(arg){
 			ev.emit("loop");
-			setTimeout(loop,wait);	//loop
+			var now=Date.now();
+			var waitingtime=frametime-(now-ticktime);
+			ticktime=ticktime+frametime;
+			//console.log(waitingtime);
+			setTimeout(loop,waitingtime);	//loop
 		}
 	},
 	//main loop
