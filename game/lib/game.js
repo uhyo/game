@@ -37,7 +37,6 @@ exports.Server.prototype=Game.util.extend(ev.EventEmitter,{
 				"game.js"]});
 		});
 		app.get('/script/:file',function(req,res,next){
-			console.log(req.params.file);
 			var filename;
 			switch(req.params.file){
 				case 'EventEmitter.min.js':
@@ -79,15 +78,19 @@ exports.Server.prototype=Game.util.extend(ev.EventEmitter,{
 			});
 			io.sockets.on("connection",function(socket){
 				//ユーザーの襲来
-				//ここでユーザーに現在の状況を教える
-				var env=game.wholeEnvironment();
-				socket.emit("init",env);
 				//ユーザー入力のイベント
 				var event=new EventEmitter();
 				socket.on("entry",function(){
 					// ユーザーを教えてあげる
 					//（サーバー側用ユーザーオブジェクト作成）
-					game.event.emit("entry",game.newUser(event));
+					var user=game.newUser(event);
+					game.event.emit("entry",user);
+					//ここでユーザーに現在の状況を教える
+					var env=game.wholeEnvironment();
+					socket.emit("init",{
+						env:env,
+						user_id:user._id,
+					});
 				});
 				//クライアント側で起きたイベント
 				socket.on("userevent",function(obj){

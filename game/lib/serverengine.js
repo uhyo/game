@@ -1,5 +1,4 @@
 var EventEmitter=require('events').EventEmitter;
-var g_idGenerator;
 Game.prototype.init=function(view,viewparam){
 	//It's dummy!
 	this.view=new ServerView();
@@ -16,15 +15,20 @@ Game.prototype.newUser=function(event){
 	//ここでサーバー用に（中身なし）
 	ServerUser.prototype.init.apply(user);
 	user.event=event;
+	//ユーザーに対してIDを付加
+	Object.defineProperty(user,"_id",{
+		value:this.uniqueId()
+	});
 	return user;
 };
 //オブジェクトを追加
 Game.prototype._old_add=Game.prototype.add;
 Game.prototype.add=function(constructor,param){
 	var obj=this._old_add.apply(this,arguments);
-	//console.log(constructor.name);
-	obj._id=this.uniqueId();
-	this.broadcast("add",{constructorName:constructor.name,_id:obj._id,param:this.jsonFilter(param)});
+};
+Game.prototype.initObject=function(d){
+	//ユニークIDをあげる
+	d._id=this.uniqueId();
 };
 //ソケットで発信
 Game.prototype.broadcast=function(name,obj){
@@ -47,6 +51,7 @@ Game.prototype.jsonFilter=function(obj){
 		return {
 			$type:"user",
 			properties:this.propertiesJSON(obj),
+			_id:obj._id,
 		};
 	}else if(obj instanceof EventEmitter){
 		return {
@@ -83,10 +88,6 @@ Game.prototype.propertiesJSON=function(obj){
 	}
 	return result;
 };
-//新しいIDを作る
-Game.prototype.uniqueId=function(){
-	return g_idGenerator.generate();
-};
 //現在の状況を作る（JSON化される前提で）
 Game.prototype.wholeEnvironment=function(){
 	/*var result=[];
@@ -114,10 +115,20 @@ function ServerUser(){
 ServerUser.prototype=Game.util.extend(Game.User,{
 });
 
-function IDGenerator(){
-	this.count=0;
+function ServerTransporter(game,gaminginfo){
+	this.game=game;
+	this.gaminginfo=gaminginfo;
 }
-IDGenerator.prototype.generate=function(){
-	return this.count++;
+ServerTransporter.prototype={
+	broadcast:function(name,obj){
+		this.gaminginfo.emit("broadcast",name,obj);
+	},
+	add:function(obj){
+		this.broadcast("add",{constructorName:obj._constructor.name,_id:obj._id,param:this.game.jsonFilter(obj._param)});
+	},
+	die:function(obj){
+		console.log("dietrans!");
+		this.broadcast("die",obj._id);
+	},
 };
-g_idGenerator=new IDGenerator();
+Game.prototype.transporter=ServerTransporter;

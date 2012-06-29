@@ -1,9 +1,14 @@
 == socket connection ==
-[S->C] init [obj,obj,obj,...] / env
 [C->S] entry {} / user entry
+[S->C] init {
+        env:[obj,obj,obj,...]
+        user_id:UserID
+    } / env
 
+== during game ==
 [C->S] userevent {
         name:"eventname"
         args:[Object,Object,...]
     } / client-emitting event
 
+[S->C] die _id / vanish

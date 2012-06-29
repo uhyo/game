@@ -7,8 +7,11 @@ var gaminginfo=new EventEmitter;
 
 function Game(){
 	this.config=Game.util.clone(this.defaultConfig);
+	this.gaminginfo=gaminginfo;
+	this.idGenerator=new IDGenerator();
 	
 	this.event=new EventEmitter();
+	this.transport=this.getTransporter();
 
 	this.objects=[];	//brain objects
 	
@@ -18,9 +21,9 @@ function Game(){
 	//ユーザー
 	this.defaultUser=Game.User;
 	//できた
-	this.gaminginfo=gaminginfo;
 	gaminginfo.emit("new",this);
 
+	this.internal_init();
 }
 Game.util={
 	clone:function(obj){
@@ -55,6 +58,12 @@ Game.util={
 
 
 Game.prototype={
+	internal_init:function(){
+	},
+//新しいIDを作る
+	uniqueId:function(){
+		return this.idGenerator.generate();
+	},
 	init:function(view,viewparam){
 		//hard
 		this.view = new view();
@@ -73,6 +82,9 @@ Game.prototype={
 	},
 	useUser:function(userobj){
 		this.defaultUser=userobj;
+	},
+	getTransporter:function(){
+		return new (this.transporter)(this,this.gaminginfo);
 	},
 	//start loop
 	loop:function(){
@@ -110,6 +122,8 @@ Game.prototype={
 			if(arr[i]._flg_dying){
 				arr.splice(i,1);
 				i--,l--;
+				console.log("dydy");
+				this.transport.die(arr[i]);
 			}
 		}
 		//delayの処理
@@ -152,9 +166,11 @@ Game.prototype={
 		this.initObject(d);
 
 		this.objects.push(d);
+		this.transport.add(d);
 		return d;
 	},
 	initObject:function(d){
+		console.log("initdie");
 		d.event.on("die",function(){
 			d._flg_dying=true;	//dying flag
 		}.bind(this));
@@ -256,6 +272,9 @@ Game.User=function(){
 Game.User.prototype={
 	init:function(){},
 };
+Game.DummyUser=function(){
+	this.event=new EventEmitter();
+};
 Game.ClientUser=function(){
 	Game.User.apply(this,arguments);
 };
@@ -274,13 +293,17 @@ Game.KeyboardUser.prototype=Game.util.extend(Game.ClientUser,{
 		//キーイベント定義
 		document.addEventListener('keydown',function(e){
 			if(this.waitingkey.indexOf(e.keyCode)>=0){
-				ev.emit('keydown',e);
+				ev.emit('keydown',{
+					keyCode:e.keyCode,
+				});
 				e.preventDefault();
 			}
 		}.bind(this),false);
 		document.addEventListener('keyup',function(e){
 			if(this.waitingkey.indexOf(e.keyCode)>=0){
-				ev.emit('keyup',e);
+				ev.emit('keyup',{
+					keyCode:e.keyCode,
+				});
 			}
 		}.bind(this),false);
 	},
@@ -288,6 +311,22 @@ Game.KeyboardUser.prototype=Game.util.extend(Game.ClientUser,{
 		this.waitingkey=arr;
 	},
 });
+
+//各種通信 基底クラス的なものを定義
+Game.Transporter=function(game,gaminginfo){
+}
+Game.Transporter.prototype={
+	add:function(obj){},
+	die:function(obj){},
+};
+Game.prototype.transporter=Game.Transporter;
+
+function IDGenerator(){
+	this.count=0;
+}
+IDGenerator.prototype.generate=function(){
+	return this.count++;
+};
 
 if(typeof exports=="object" && exports){
 	//exportできる
