@@ -23,12 +23,15 @@ gaminginfo.on("new",function(game){
 			//console.log(window[obj.constructorName]);
 			var o=game._old_add(window[obj.constructorName],executeJSON(game,obj.param));
 			o._id=obj._id;
+			//入れる
+			game.objectsmap[o._id]=o;
 		});
-		socket.on("die",function(obj){
+		socket.on("die",function(_id){
 			//オブジェクトを削除する
-			console.log("diehi");
-			game.objectsmap[obj._id]._flg_dying=true;
-			delete game.objectsmap[obj._id];
+			//console.log("dyyyyy!",_id,game.objectsmap[_id]);
+			if(!game.objectsmap[_id])return;
+			game.objectsmap[_id]._flg_dying=true;
+			delete game.objectsmap[_id];
 		});
 
 	});

@@ -120,10 +120,9 @@ Game.prototype={
 			ins.emit("loop");
 			
 			if(arr[i]._flg_dying){
+				this.transport.die(arr[i]);
 				arr.splice(i,1);
 				i--,l--;
-				console.log("dydy");
-				this.transport.die(arr[i]);
 			}
 		}
 		//delayの処理
@@ -170,7 +169,6 @@ Game.prototype={
 		return d;
 	},
 	initObject:function(d){
-		console.log("initdie");
 		d.event.on("die",function(){
 			d._flg_dying=true;	//dying flag
 		}.bind(this));

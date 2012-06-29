@@ -22,12 +22,15 @@ Game.prototype.newUser=function(event){
 	return user;
 };
 //オブジェクトを追加
-Game.prototype._old_add=Game.prototype.add;
+/*Game.prototype._old_add=Game.prototype.add;
 Game.prototype.add=function(constructor,param){
 	var obj=this._old_add.apply(this,arguments);
-};
+	return obj;
+};*/
+Game.prototype._old_initObject=Game.prototype.initObject;
 Game.prototype.initObject=function(d){
 	//ユニークIDをあげる
+	this._old_initObject(d);
 	d._id=this.uniqueId();
 };
 //ソケットで発信
@@ -127,7 +130,7 @@ ServerTransporter.prototype={
 		this.broadcast("add",{constructorName:obj._constructor.name,_id:obj._id,param:this.game.jsonFilter(obj._param)});
 	},
 	die:function(obj){
-		console.log("dietrans!");
+		//console.log("die!",obj._id,obj._constructor.name);
 		this.broadcast("die",obj._id);
 	},
 };
