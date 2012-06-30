@@ -32,6 +32,17 @@ Game.prototype.initObject=function(d){
 	//ユニークIDをあげる
 	this._old_initObject(d);
 	d._id=this.uniqueId();
+	var ev=d.event;
+	var game=this;
+	ev._old_emit=ev.emit;
+	ev.emit=function(name){
+		var args=Array.prototype.slice.call(arguments,1);
+		this._old_emit.apply(this,[name].concat(args));
+		if(name!="internal" && name!="loop"){
+			game.transport.event(d,name,args);
+		}
+	};
+
 };
 //ソケットで発信
 Game.prototype.broadcast=function(name,obj){
@@ -132,6 +143,13 @@ ServerTransporter.prototype={
 	die:function(obj){
 		//console.log("die!",obj._id,obj._constructor.name);
 		this.broadcast("die",obj._id);
+	},
+	event:function(obj,name,args){
+		this.broadcast("event",{
+			_id:obj._id,
+			name:name,
+			args:args,
+		});
 	},
 };
 Game.prototype.transporter=ServerTransporter;

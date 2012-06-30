@@ -12,3 +12,8 @@
     } / client-emitting event
 
 [S->C] die _id / vanish
+[S->C] event {
+        _id: id of obj
+        name:"eventname"
+        args:[Object,Object,...]
+    } / server-emitting event

@@ -33,6 +33,12 @@ gaminginfo.on("new",function(game){
 			game.objectsmap[_id]._flg_dying=true;
 			delete game.objectsmap[_id];
 		});
+		socket.on("event",function(obj){
+			//イベントがきた
+			var o=game.objectsmap[obj._id];
+			if(!o)return;
+			o.event.emit.apply(o.event,[obj.name].concat(obj.args));
+		});
 
 	});
 

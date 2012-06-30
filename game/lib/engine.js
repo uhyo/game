@@ -316,6 +316,7 @@ Game.Transporter=function(game,gaminginfo){
 Game.Transporter.prototype={
 	add:function(obj){},
 	die:function(obj){},
+	event:function(obj,name,args){},
 };
 Game.prototype.transporter=Game.Transporter;
 
