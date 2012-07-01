@@ -97,11 +97,12 @@ Game.prototype={
 		var frametime=1000/fps;
 		var ticktime=Date.now();
 		//ev.on("loop",this.mainloop.bind(this));
+		ev.emit("loopstart");
 		
-		loop(true);
+		loop();
 		
 		//main loop
-		function loop(arg){
+		function loop(){
 			//ev.emit("loop");
 			self.mainloop();
 			var now=Date.now();
@@ -135,6 +136,7 @@ Game.prototype={
 				i--,l--;
 			}
 		}
+		this.transport.loop();
 	},
 	
 	//objects return:internal object
