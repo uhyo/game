@@ -67,13 +67,13 @@ function MyMachine(game,event,param){
 	
 	var t=this;
 
-	var ke=user.event;
-	user.keyWait([37,38,39,40,90/*Z*/]);
-
 	//入力状態z
 	var key={37:false,38:false,39:false,40:false,90:false};
 	
 	var shot_count=0, shot_wait=5;
+
+	var ke=user.event;
+	user.keyWait([37,38,39,40,90/*Z*/]);
 
 	ke.on("keydown",function(e){
 		var c=e.keyCode;
@@ -660,12 +660,16 @@ function ScoreDisplay(game,event,param){
 	t.score=0;
 	//ゲームイベントに割り込み
 	game.event.on("getscore",function(delta){
-		t.score+=delta;
+		//t.score+=delta;
+		event.emit("getscore",delta);
 	});
 	event.on("render",function(canvas,ctx){
 		ctx.fillStyle="#000000";
 		ctx.font="16px serif";
 		ctx.fillText("SCORE: "+t.score,20,50);
+	});
+	event.on("getscore",function(delta){
+		t.score+=delta;
 	});
 }
 //エフェクトを発行する

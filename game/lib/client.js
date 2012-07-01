@@ -7,6 +7,7 @@ gaminginfo.on("new",function(game){
 	socket.on("init",function(obj){
 		var env=obj.env;
 		game.user._id=obj.user_id;
+		game.objectsmap[obj.user_id]=game.user;
 		//現在の状況すべて
 		console.log("init!");
 		//console.log(JSON.stringify(env));
@@ -39,6 +40,15 @@ gaminginfo.on("new",function(game){
 			if(!o)return;
 			o.event.emit.apply(o.event,[obj.name].concat(obj.args));
 		});
+		socket.on("gameevent",function(obj){
+			//イベントがきた
+			game.event._old_emit.apply(game.event,[obj.name].concat(obj.args));
+		});
+		socket.on("userevent",function(obj){
+			var u=game.objectsmap[obj._id];
+			if(!u)return;
+			u.event.emit.apply(u.event,[obj.name].concat(obj.args));
+		});
 
 	});
 
@@ -47,6 +57,9 @@ gaminginfo.on("new",function(game){
 Game.prototype.internal_init=function(){
 	//オブジェクトたち(_idをキーにしたやつ）
 	this.objectsmap={};
+	//無効
+	this.event._old_emit=this.event.emit;
+	this.event.emit=function(){};
 };
 Game.prototype.start=function(){
 	//サーバーへユーザーを送る
@@ -68,7 +81,7 @@ Game.prototype.newUser=function(){
 			name:name,
 			args:args,
 		});
-		old_emit.apply(user.event,arguments);
+		//old_emit.apply(user.event,arguments);
 	};
 	return user;
 };
@@ -84,12 +97,16 @@ function executeJSON(game,obj){
 		//ユーザーオブジェクト
 		//var user=game.newUser();
 		var user;
-		console.log("user!",obj._id,game.user._id);
+		//console.log("user!",obj._id,game.user._id);
 		if(obj._id==game.user._id){
 			//自分だ
 			user=game.user;
 		}else{
-			new Game.DummyUser();
+			user=game.newUser();
+			user.internal=false;
+			user._id=obj._id;
+			user.init();
+			game.objectsmap[obj._id]=user;
 		}
 		setProperties(user,executeJSON(game,obj.properties));
 		return user;

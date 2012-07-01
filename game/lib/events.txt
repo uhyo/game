@@ -10,6 +10,12 @@
         name:"eventname"
         args:[Object,Object,...]
     } / client-emitting event
+[S->C] userevent {
+        name:"eventname"
+        args:[Object,Object,...]
+        _id: id of user
+    } / server-emitting event
+
 
 [S->C] die _id / vanish
 [S->C] event {
@@ -17,3 +23,7 @@
         name:"eventname"
         args:[Object,Object,...]
     } / server-emitting event
+[S->C] gameevent {
+        name:"eventname"
+        args:[Object,Object,...]
+    } / server-game event

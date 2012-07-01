@@ -96,13 +96,14 @@ Game.prototype={
 		//時間カウント
 		var frametime=1000/fps;
 		var ticktime=Date.now();
-		ev.on("loop",this.mainloop.bind(this));
+		//ev.on("loop",this.mainloop.bind(this));
 		
 		loop(true);
 		
 		//main loop
 		function loop(arg){
-			ev.emit("loop");
+			//ev.emit("loop");
+			self.mainloop();
 			var now=Date.now();
 			var waitingtime=frametime-(now-ticktime);
 			ticktime=ticktime+frametime;
@@ -266,6 +267,7 @@ Game.ClientCanvasView.prototype=Game.util.merge(new Game.ClientView,{
 //User input
 Game.User=function(){
 	this.event=new EventEmitter();
+	this.internal=true;	//内部フラグ
 };
 Game.User.prototype={
 	init:function(){},
@@ -288,22 +290,24 @@ Game.KeyboardUser.prototype=Game.util.extend(Game.ClientUser,{
 		var ev=this.event;
 		
 		this.waitingkey=[];
-		//キーイベント定義
-		document.addEventListener('keydown',function(e){
-			if(this.waitingkey.indexOf(e.keyCode)>=0){
-				ev.emit('keydown',{
-					keyCode:e.keyCode,
-				});
-				e.preventDefault();
-			}
-		}.bind(this),false);
-		document.addEventListener('keyup',function(e){
-			if(this.waitingkey.indexOf(e.keyCode)>=0){
-				ev.emit('keyup',{
-					keyCode:e.keyCode,
-				});
-			}
-		}.bind(this),false);
+		if(this.internal){
+			//キーイベント定義
+			document.addEventListener('keydown',function(e){
+				if(this.waitingkey.indexOf(e.keyCode)>=0){
+					ev.emit('keydown',{
+						keyCode:e.keyCode,
+					});
+					e.preventDefault();
+				}
+			}.bind(this),false);
+			document.addEventListener('keyup',function(e){
+				if(this.waitingkey.indexOf(e.keyCode)>=0){
+					ev.emit('keyup',{
+						keyCode:e.keyCode,
+					});
+				}
+			}.bind(this),false);
+		}
 	},
 	keyWait:function(arr){
 		this.waitingkey=arr;
@@ -317,6 +321,8 @@ Game.Transporter.prototype={
 	add:function(obj){},
 	die:function(obj){},
 	event:function(obj,name,args){},
+	gameevent:function(name,args){},
+	userevent:function(user,name,args){},
 };
 Game.prototype.transporter=Game.Transporter;
 

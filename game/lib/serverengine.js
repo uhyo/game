@@ -1,4 +1,14 @@
 var EventEmitter=require('events').EventEmitter;
+Game.prototype.internal_init=function(){
+	this.event._old_emit=this.event.emit;
+	var game=this;
+	this.event.emit=function(name){
+		var args=Array.prototype.slice.call(arguments,1);
+		this._old_emit.apply(this,[name].concat(args));
+		if(name=="loop")return;
+		game.transport.gameevent(name,args);
+	};
+};
 Game.prototype.init=function(view,viewparam){
 	//It's dummy!
 	this.view=new ServerView();
@@ -11,10 +21,18 @@ Game.prototype._old_newUser=Game.prototype.newUser;
 Game.prototype.newUser=function(event){
 	//新しいユーザー（サーバー用）
 	//var user=this._old_newUser();
+	var game=this;
 	var user=new (this.defaultUser)();
 	//ここでサーバー用に（中身なし）
 	ServerUser.prototype.init.apply(user);
 	user.event=event;
+	event._old_emit=event.emit;
+	event.emit=function(name){
+		var args=Array.prototype.slice.call(arguments,1);
+		this._old_emit.apply(this,[name].concat(args));
+		//全員へ
+		game.transport.userevent(user,name,args);
+	};
 	//ユーザーに対してIDを付加
 	Object.defineProperty(user,"_id",{
 		value:this.uniqueId()
@@ -38,7 +56,7 @@ Game.prototype.initObject=function(d){
 	ev.emit=function(name){
 		var args=Array.prototype.slice.call(arguments,1);
 		this._old_emit.apply(this,[name].concat(args));
-		if(name!="internal" && name!="loop"){
+		if(name!="internal" && name!="loop" && name!="die"){
 			game.transport.event(d,name,args);
 		}
 	};
@@ -151,5 +169,23 @@ ServerTransporter.prototype={
 			args:args,
 		});
 	},
+	gameevent:function(name,args){
+		this.broadcast("gameevnt",{
+			name:name,
+			args:args,
+		});
+	},
+	userevent:function(user,name,args){
+		this.broadcast("userevent",{
+			_id:user._id,
+			name:name,
+			args:args,
+		});
+	},
 };
+function ServerLoopTransporter(){
+	ServerTransporter.apply(this,arguments);
+}
+ServerLoopTransporter.prototype=Game.util.extend(ServerTransporter,{
+});
 Game.prototype.transporter=ServerTransporter;

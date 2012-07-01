@@ -83,6 +83,7 @@ exports.Server.prototype=Game.util.extend(ev.EventEmitter,{
 				socket.on("entry",function(){
 					// ユーザーを教えてあげる
 					//（サーバー側用ユーザーオブジェクト作成）
+					console.log("entry!!");
 					var user=game.newUser(event);
 					game.event.emit("entry",user);
 					//ここでユーザーに現在の状況を教える
