@@ -4,7 +4,7 @@ socket.on("connect",function(){
 });
 //Game p
 gaminginfo.on("new",function(game){
-	socket.on("init",function(obj){
+	socket.on("init",function(obj,func){
 		var env=obj.env;
 		game.user._id=obj.user_id;
 		game.objectsmap[obj.user_id]=game.user;
@@ -27,6 +27,7 @@ gaminginfo.on("new",function(game){
 			//新しいオブジェクトが追加された
 			//クライアント側に追加する
 			//console.log(window[obj.constructorName]);
+			console.log("add",obj.constructorName);
 			var o=game._old_add(window[obj.constructorName],executeJSON(game,obj.param));
 			o._id=obj._id;
 			//入れる
@@ -54,6 +55,7 @@ gaminginfo.on("new",function(game){
 			if(!u)return;
 			u.event.emit.apply(u.event,[obj.name].concat(obj.args));
 		});
+		func();
 
 	});
 

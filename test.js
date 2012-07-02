@@ -803,6 +803,38 @@ function AnnounceDisplay(game,event,param){
 		ctx.fillText(t.str,t.x,t.y);
 	});
 }
+//エントリーのパネル
+function EntryPanel(game,event,param){
+	var user=param.user;
+	var e=user.event;
+
+	e.on("disconnect",function(){
+		event.emit("die");
+	});
+	user.keyWait([13]);
+	e.on("keydown",function(ev){
+		//はじまる
+		e.removeAllListeners("keydown");
+		game.add(MyMachine,{
+			x:50,
+			y:50,
+			speed:6,
+			user:user,
+		});
+		event.emit("die");
+	});
+
+	event.on("render",function(canvas,ctx){
+		ctx.fillStyle="rgba(191,191,191,0.7)";
+		ctx.fillRect(50,50,game.width-100,game.height-100);
+		ctx.fillStyle="#000000";
+		ctx.font="30px sans-serif";
+		ctx.fillText("参加するにはEnterキーを押して下さい",70,100);
+		ctx.font="24px serif";
+		ctx.fillText("操作方法: 上下左右キーで移動",100,150);
+		ctx.fillText("Zキーで弾を発射",100,180);
+	});
+}
 //fps
 function FPSChecker(game,event,param){
 	var t=this;
@@ -833,12 +865,15 @@ game.useUser(Game.KeyboardUser);
 
 game.event.on("entry",function(user){
 	//新しいユーザー
-	game.add(MyMachine,{
+	/*game.add(MyMachine,{
 		x:50,
 		y:50,
 		speed:6,
 		user:user,
-	});
+	});*/
+   game.add(EntryPanel,{
+	   user:user,
+   });
 });
 game.add(EnemyGenerator);
 game.add(ScoreDisplay,{});

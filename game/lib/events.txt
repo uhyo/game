@@ -3,7 +3,7 @@
 [S->C] init {
         env:[obj,obj,obj,...]
         user_id:UserID
-    } / env
+    },function(){} / env
 
 == during game ==
 [C->S] userevent {
