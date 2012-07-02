@@ -79,20 +79,26 @@ exports.Server.prototype=Game.util.extend(ev.EventEmitter,{
 			gaminginfo.on("broadcast",function(name,obj){
 				io.sockets.emit(name,obj);
 			});
+			game._users=[];
 			io.sockets.on("connection",function(socket){
 				//ユーザーの襲来
 				//ユーザー入力のイベント
+				var user;
 				var event=new EventEmitter();
 				socket.on("disconnect",function(){
 					//切断された
 					event.emit("disconnect");
+					if(user){
+						game._users=game._users.filter(function(x){return x!=user});
+					}
 
 				});
 				socket.on("entry",function(){
 					// ユーザーを教えてあげる
 					//（サーバー側用ユーザーオブジェクト作成）
-					var user=game.newUser(event);
+					user=game.newUser(event);
 					game.event.emit("entry",user);
+					game._users.push(user);
 					//ここでユーザーに現在の状況を教える
 					var env=game.wholeEnvironment();
 					socket.emit("init",{
