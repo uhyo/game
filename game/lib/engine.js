@@ -325,6 +325,7 @@ Game.Transporter.prototype={
 	event:function(obj,name,args){},
 	gameevent:function(name,args){},
 	userevent:function(user,name,args){},
+	loop:function(){},
 };
 Game.prototype.transporter=Game.Transporter;
 

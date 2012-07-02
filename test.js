@@ -84,6 +84,11 @@ function MyMachine(game,event,param){
 		key[e.keyCode]=false;
 	});
 	
+	//切断時
+	ke.on("disconnect",function(){
+		//自殺
+		event.emit("die");
+	});
 	event.on("internal",function(){
 		if(key[90]){
 			//Shot

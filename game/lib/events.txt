@@ -16,6 +16,7 @@
         _id: id of user
     } / server-emitting event
 
+[S->C] events [{name:"eventname",obj:obj},...] / pack of all kinds of events
 
 [S->C] die _id / vanish
 [S->C] event {
@@ -27,3 +28,6 @@
         name:"eventname"
         args:[Object,Object,...]
     } / server-game event
+
+== server internal events ==
+[User]disconnect

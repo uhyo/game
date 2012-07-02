@@ -9,7 +9,6 @@ gaminginfo.on("new",function(game){
 		game.user._id=obj.user_id;
 		game.objectsmap[obj.user_id]=game.user;
 		//現在の状況すべて
-		console.log("init!");
 		//console.log(JSON.stringify(env));
 		game.objects.length=0;
 		for(var i=0,l=env.length;i<l;i++){
@@ -17,6 +16,12 @@ gaminginfo.on("new",function(game){
 			executeJSON(game,env[i]);
 		}
 
+		//全部
+		socket.on("events",function(arr){
+			for(var i=0,l=arr.length;i<l;i++){
+				socket.$emit(arr[i].name,arr[i].obj);
+			}
+		});
 		//メッセージを受け取りはじめる
 		socket.on("add",function(obj){
 			//新しいオブジェクトが追加された

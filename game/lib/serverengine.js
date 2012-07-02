@@ -8,6 +8,12 @@ Game.prototype.internal_init=function(){
 		if(name=="loop")return;
 		game.transport.gameevent(name,args);
 	};
+	//ループ
+	this.event.on("loopstart",function(){
+		//トランスポーターを変える
+		game.transporter=ServerLoopTransporter;
+		game.transport=game.getTransporter();
+	});
 };
 Game.prototype.init=function(view,viewparam){
 	//It's dummy!
@@ -182,10 +188,29 @@ ServerTransporter.prototype={
 			args:args,
 		});
 	},
+	loop:function(){},
 };
 function ServerLoopTransporter(){
 	ServerTransporter.apply(this,arguments);
+	//LoopTransporterではイベントをまとめる
+	this.store=[];
 }
 ServerLoopTransporter.prototype=Game.util.extend(ServerTransporter,{
+	broadcast:function(name,obj){
+		this.store.push({
+			name:name,
+			obj:obj,
+		});
+	},
+	loop:function(){
+		//放出
+		var l;
+		if((l=this.store.length)>1){
+			this.gaminginfo.emit("broadcast","events",this.store);
+		}else if(l){
+			this.gaminginfo.emit("broadcast",this.store[0].name,this.store[0].obj);
+		}
+		this.store.length=0;
+	},
 });
 Game.prototype.transporter=ServerTransporter;

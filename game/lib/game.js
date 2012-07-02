@@ -11,6 +11,9 @@ exports.Server=function(){
 	ev.EventEmitter.apply(this,arguments);
 }
 exports.Server.prototype=Game.util.extend(ev.EventEmitter,{
+	io:function(cb){
+		cb(socketio);
+	},
 	init:function(gamefile,options){
 		//サーバー起動
 		this.initServer(options);
@@ -57,14 +60,14 @@ exports.Server.prototype=Game.util.extend(ev.EventEmitter,{
 				return;
 			}
 			res.sendfile(path.resolve(__dirname,filename),function(err){
-				console.log(err);
+				console.log(filename,err);
 				next();
 			});
 
 		}.bind(this));
 		app.listen(options.port || 80);
 		var io=socketio.listen(app);
-
+		io.set('log level',1);
 		this.initSocket(io);
 	},
 	initSocket:function(io){
@@ -80,10 +83,14 @@ exports.Server.prototype=Game.util.extend(ev.EventEmitter,{
 				//ユーザーの襲来
 				//ユーザー入力のイベント
 				var event=new EventEmitter();
+				socket.on("disconnect",function(){
+					//切断された
+					event.emit("disconnect");
+
+				});
 				socket.on("entry",function(){
 					// ユーザーを教えてあげる
 					//（サーバー側用ユーザーオブジェクト作成）
-					console.log("entry!!");
 					var user=game.newUser(event);
 					game.event.emit("entry",user);
 					//ここでユーザーに現在の状況を教える
