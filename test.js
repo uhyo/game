@@ -882,7 +882,7 @@ game.add(EffectProcessor,{});
 //game.add(FPSChecker,{});
 
 //スコア管理
-game.store.score=1200;
+game.store.score=/*1200*/0;
 game.event.on("getscore",function(delta){
 	game.store.score+=delta;
 });

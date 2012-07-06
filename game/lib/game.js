@@ -59,10 +59,7 @@ exports.Server.prototype=Game.util.extend(ev.EventEmitter,{
 				next();
 				return;
 			}
-			res.sendfile(path.resolve(__dirname,filename),function(err){
-				console.log(filename,err);
-				next();
-			});
+			res.sendfile(path.resolve(__dirname,filename));
 
 		}.bind(this));
 		app.listen(options.port || 80);
@@ -79,7 +76,6 @@ exports.Server.prototype=Game.util.extend(ev.EventEmitter,{
 			gaminginfo.on("broadcast",function(name,obj){
 				io.sockets.emit(name,obj);
 			});
-			game._users=[];
 			io.sockets.on("connection",function(socket){
 				//ユーザーの襲来
 				//ユーザー入力のイベント
@@ -89,7 +85,7 @@ exports.Server.prototype=Game.util.extend(ev.EventEmitter,{
 					//切断された
 					event.emit("disconnect");
 					if(user){
-						game._users=game._users.filter(function(x){return x!=user});
+						game.byeUser(user);
 					}
 
 				});
@@ -98,13 +94,16 @@ exports.Server.prototype=Game.util.extend(ev.EventEmitter,{
 					//（サーバー側用ユーザーオブジェクト作成）
 					//ここでユーザーに現在の状況を教える
 					var env=game.wholeEnvironment();
+					user=game.newUser(event);
+					socket.on("initok",function(){
+						//game.event.emit("entry",user);
+						game.entry(user);
+						game._users.push(user);
+						socket.removeAllListeners("initok");
+					});
 					socket.emit("init",{
 						env:env,
 						user_id:user._id,
-					},function(){
-						user=game.newUser(event);
-						game.event.emit("entry",user);
-						game._users.push(user);
 					});
 				});
 				//クライアント側で起きたイベント
@@ -112,6 +111,10 @@ exports.Server.prototype=Game.util.extend(ev.EventEmitter,{
 					if(!obj || !obj.args)return;
 					event.emit.apply(event,[obj.name].concat(obj.args));
 				});
+				//動く
+				if(game.loopController){
+					game.loopController.start();
+				}
 			});
 		});
 

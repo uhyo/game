@@ -5,7 +5,7 @@ Game.prototype.internal_init=function(){
 	this.event.emit=function(name){
 		var args=Array.prototype.slice.call(arguments,1);
 		this._old_emit.apply(this,[name].concat(args));
-		if(name=="loop")return;
+		if(name==="loop")return;
 		game.transport.gameevent(name,args);
 	};
 	//ループ

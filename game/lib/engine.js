@@ -20,8 +20,12 @@ function Game(){
 	this.store={};	//データストア（Server用）
 	//ユーザー
 	this.defaultUser=Game.User;
+	this._users=[];	//参加ユーザーの一覧
+	//なんかのマネージャ
+	this.manager=new Game.Manager(this);
 	//できた
 	gaminginfo.emit("new",this);
+
 
 	this.internal_init();
 }
@@ -73,7 +77,18 @@ Game.prototype={
 		//hard
 		//var user=new Game.User();
 		var user=this.newUser();
+		this.entry(user);
+	},
+	//ユーザーが登録された
+	entry:function(user){
+		this.manager.newUser(user);
+		this._users.push(user);
 		this.event.emit("entry",user);
+	},
+	//ユーザーがいなくなった
+	byeUser:function(user){
+		this._users=this._users.filter(function(x){return x!=user});
+		this.manager.bye(user);
 	},
 	newUser:function(){
 		var user=new (this.defaultUser)();
@@ -89,28 +104,8 @@ Game.prototype={
 	//start loop
 	loop:function(){
 		
-		var fps=this.config.fps;
-		var self=this;
-		var ev=this.event;
-		
-		//時間カウント
-		var frametime=1000/fps;
-		var ticktime=Date.now();
-		//ev.on("loop",this.mainloop.bind(this));
-		ev.emit("loopstart");
-		
-		loop();
-		
-		//main loop
-		function loop(){
-			//ev.emit("loop");
-			self.mainloop();
-			var now=Date.now();
-			var waitingtime=frametime-(now-ticktime);
-			ticktime=ticktime+frametime;
-			//console.log(waitingtime);
-			setTimeout(loop,waitingtime);	//loop
-		}
+		this.manager=new Game.LoopManager(this);
+		this.manager.start();
 	},
 	//main loop
 	mainloop:function(){
@@ -187,6 +182,10 @@ Game.prototype={
 		if(arr.length==0)return null;
 		return arr[Math.floor(Math.random()*arr.length)];
 	},
+	//数える
+	count:function(func){
+		return this.filter(func).length;
+	},
 	//全部削除（からっぽ）
 	clean:function(){
 		//this.objects.length=0;
@@ -213,6 +212,7 @@ Game.prototype={
 	//------------------
 	defaultConfig:{
 		fps:30,
+		stopWithNoUser:true,
 	}
 };
 
@@ -329,6 +329,74 @@ Game.Transporter.prototype={
 };
 Game.prototype.transporter=Game.Transporter;
 
+Game.Manager=function(game){
+	this.game=game;
+};
+Game.Manager.prototype={
+	start:function(){},
+	newUser:function(user){},
+	bye:function(user){},
+};
+//ループ用
+Game.LoopManager=function(game){
+	Game.Manager.apply(this,arguments);
+	this.usercount=0;
+	this.stop_flg=true;
+	this.ticktime=null;
+};
+Game.LoopManager.prototype={
+	start:function(){
+		var game=this.game, self=this;
+		this.usercount=game.
+		//ev.on("loop",this.mainloop.bind(this));
+		ev.emit("loopstart");
+		
+		this.stop_flg=true;
+		this.loopstart();
+		//this.loopController.start();
+		
+	},
+	newUser:function(user){
+		this.usercount++;
+		this.loopstart();
+	},
+	loopstart:function(){
+		if(!this.stop_flg || this.usercount===0)return;
+		console.log("starting...");
+		this.stop_flg=false;
+		this.ticktime=Date.now();
+		var t=this,game=this.game;
+		var fps=game.config.fps;
+		var ev=game.event;
+		
+		//時間カウント
+		var frametime=1000/fps;
+		var ticktime=Date.now();
+
+		//main loop
+		loop();
+		function loop(){
+			//ev.emit("loop");
+			game.mainloop();
+			var now=Date.now();
+			var waitingtime=frametime-(now-ticktime);
+			ticktime=ticktime+frametime;
+			//console.log(waitingtime);
+			if(!t.stop_flg){
+				setTimeout(loop,waitingtime);	//loop
+			}
+		}
+	},
+	loopstop:function(){
+		this.stop_flg=true;
+		console.log("stoping...");
+	},
+	bye:function(user){
+		this.usercount--;
+		if(this.usercount===0)this.loopstop();
+	},
+
+}
 function IDGenerator(){
 	this.count=0;
 }

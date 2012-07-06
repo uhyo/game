@@ -4,7 +4,7 @@ socket.on("connect",function(){
 });
 //Game p
 gaminginfo.on("new",function(game){
-	socket.on("init",function(obj,func){
+	socket.on("init",function(obj){
 		var env=obj.env;
 		game.user._id=obj.user_id;
 		game.objectsmap[obj.user_id]=game.user;
@@ -55,8 +55,7 @@ gaminginfo.on("new",function(game){
 			if(!u)return;
 			u.event.emit.apply(u.event,[obj.name].concat(obj.args));
 		});
-		func();
-
+		socket.emit("initok");
 	});
 
 });
