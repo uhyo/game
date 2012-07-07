@@ -76,6 +76,9 @@ exports.Server.prototype=Game.util.extend(ev.EventEmitter,{
 			gaminginfo.on("broadcast",function(name,obj){
 				io.sockets.emit(name,obj);
 			});
+			gaminginfo.on("private",function(socket,name,obj){
+				socket.emit(name,obj);
+			});
 			io.sockets.on("connection",function(socket){
 				//ユーザーの襲来
 				//ユーザー入力のイベント
@@ -95,6 +98,10 @@ exports.Server.prototype=Game.util.extend(ev.EventEmitter,{
 					//ここでユーザーに現在の状況を教える
 					var env=game.wholeEnvironment();
 					user=game.newUser(event);
+					//ユーザーとソケットを結びつける
+					Object.defineProperty(user,"_socket",{
+						value:socket,
+					});
 					socket.on("initok",function(){
 						//game.event.emit("entry",user);
 						game.entry(user);

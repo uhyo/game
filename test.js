@@ -149,7 +149,7 @@ function MyMachine(game,event,param){
 			game.event.emit("effect","explode",t.center());
 			//死ぬ
 			event.emit("die");
-			game.event.emit("over",t);
+			game.event.emit("over",t,user);
 		}
 	});
 }
@@ -662,7 +662,7 @@ function EnemyGenerator(game,event,param){
 //スコアをディスプレイする
 function ScoreDisplay(game,event,param){
 	var t=this;
-	t.score=0;
+	t.score=/*0*/game.store.score;
 	//ゲームイベントに割り込み
 	game.event.on("getscore",function(delta){
 		//t.score+=delta;
@@ -808,6 +808,8 @@ function EntryPanel(game,event,param){
 	var user=param.user;
 	var e=user.event;
 
+	//ユーザープライベートなオブジェクト
+	this.private=user;
 	e.on("disconnect",function(){
 		event.emit("die");
 	});
@@ -821,6 +823,8 @@ function EntryPanel(game,event,param){
 			speed:6,
 			user:user,
 		});
+		//しらせる
+		game.event.emit("newMachine");
 		event.emit("die");
 	});
 
@@ -833,6 +837,34 @@ function EntryPanel(game,event,param){
 		ctx.font="24px serif";
 		ctx.fillText("操作方法: 上下左右キーで移動",100,150);
 		ctx.fillText("Zキーで弾を発射",100,180);
+	});
+}
+//コンティニューパネル
+function ContinueCountDisplay(game,event,param){
+	this.remains=param.remains;
+	var t=this;
+
+	event.on("loop",function(){
+		t.remains--;
+		if(t.remains<0){
+			event.emit("die");
+		}
+	});
+	game.event.on("newMachine",function(){
+		event.emit("die");
+	});
+	event.on("render",function(canvas,ctx){
+		if(game.count(EntryPanel)>0)return;	//邪魔
+		ctx.fillStyle="rgba(191,191,191,0.7)";
+		ctx.fillRect(50,50,game.width-100,game.height-100);
+		ctx.fillStyle="#000000";
+		ctx.font="30px sans-serif";
+		ctx.fillText("参加者募集中",70,100);
+		ctx.font="24px serif";
+		ctx.fillText("あと　　　　秒以内に参加しないと",100,150);
+		ctx.fillText("ゲームオーバーになります",100,180);
+		ctx.fillStyle="#ff0000";
+		ctx.fillText("　　 "+(t.remains/game.config.fps).toPrecision(3),100,150);
 	});
 }
 //fps
@@ -875,29 +907,40 @@ game.event.on("entry",function(user){
 	   user:user,
    });
 });
-game.add(EnemyGenerator);
-game.add(ScoreDisplay,{});
-
-game.add(EffectProcessor,{});
 //game.add(FPSChecker,{});
+initGame();
 
 //スコア管理
-game.store.score=/*1200*/0;
 game.event.on("getscore",function(delta){
 	game.store.score+=delta;
 });
 
-game.event.on("over",function(user){
+game.event.on("over",function(userMachine,user){
 	//死んだ
 	var arr=game.filter(MyMachine);
-	arr=arr.filter(function(x){return x!=user});
-	/*if(arr.length==0){
-		//もういない
-		game.delay(45,function(){
-			game.clean();
-			game.add(GameOverDisplay,{});
+	arr=arr.filter(function(x){return x!=userMachine});
+	if(arr.length==0){
+		//もういない(30秒)
+		game.add(ContinueCountDisplay,{remains:game.config.fps*30});
+		game.delay(game.config.fps*30,function(){
+			//誰もいない
+			if(game.count(MyMachine)===0){
+				game.clean();
+				game.add(GameOverDisplay,{});
+				game.delay(game.config.fps*10,function(){
+					//再開
+					initGame();
+
+				});
+			}
 		});
-	}*/
+	}
+	//45秒あとに再開できる
+	game.delay(game.config.fps*45,function(){
+		game.add(EntryPanel,{
+			user:user,
+		});
+	});
 });
 
 game.start();
@@ -907,6 +950,13 @@ game.config.fps=30;
 
 game.loop();
 
+function initGame(){
+	game.store.score=/*1200*/0;
+	game.add(EnemyGenerator);
+	game.add(ScoreDisplay,{});
+
+	game.add(EffectProcessor,{});
+}
 
 
 

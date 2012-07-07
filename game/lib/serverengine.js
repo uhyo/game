@@ -139,7 +139,9 @@ Game.prototype.wholeEnvironment=function(){
 	//できた
 	console.log(result);
 	return result;*/
-   return this.jsonFilter(this.objects);
+   return this.jsonFilter(this.objects.filter(function(x){
+	   return !x.private;
+   }));
 };
 
 function ServerView(){
@@ -161,8 +163,22 @@ ServerTransporter.prototype={
 	broadcast:function(name,obj){
 		this.gaminginfo.emit("broadcast",name,obj);
 	},
+	touser:function(user,name,obj){
+		if(!user._socket)return;
+		this.gaminginfo.emit("private",user._socket,name,obj);
+	},
 	add:function(obj){
-		this.broadcast("add",{constructorName:obj._constructor.name,_id:obj._id,param:this.game.jsonFilter(obj._param)});
+		var o={
+			constructorName:obj._constructor.name,
+			_id:obj._id,
+			param:this.game.jsonFilter(obj._param),
+		};
+		if(obj.private){
+			//ユーザープライベートなオブジェクトである
+			this.touser(obj.private,"add",o);
+		}else{
+			this.broadcast("add",o);
+		}
 	},
 	die:function(obj){
 		//console.log("die!",obj._id,obj._constructor.name);

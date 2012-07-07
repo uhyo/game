@@ -128,7 +128,7 @@ Game.prototype={
 			if(--arr[i].remains <= 0){
 				arr[i].func();
 				arr.splice(i,1);
-				i--,l--;
+				i--,l=arr.length;
 			}
 		}
 		this.transport.loop();
