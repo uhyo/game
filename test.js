@@ -283,16 +283,11 @@ function Enemy(game,event,param){
 
 	
 	event.on("internal",function(){
-		if(t.x<-10 || t.y<-10 || t.x>=game.width || t.y>=game.height){
+		if(t.x<-t.width || t.y<-t.height || t.x>=game.width || t.y>=game.height){
 			//画面から出た
 			event.emit("die");
 		}
 	});
-	event.on("loop",function(){
-		t.x -= t.speed;
-	});
-	
-	//
 }
 Enemy.prototype=Game.util.extend(EnemyBase,{
 	score:10,
@@ -302,9 +297,20 @@ Enemy.prototype=Game.util.extend(EnemyBase,{
 	speed:4,
 	startpoint:"right",
 });
+//まっすぐ進む
+function EnemyStraight(game,event,param){
+	Enemy.apply(this,arguments);
+	var t=this;
+	event.on("loop",function(){
+		t.x -= t.speed;
+	});
+}
+EnemyStraight.prototype=Game.util.extend(Enemy,{
+});
+
 
 function Enemy1(game,event,param){
-	Enemy.apply(this,arguments);
+	EnemyStraight.apply(this,arguments);
 	var t=this;
 
 	var wait=40,count=wait;
@@ -327,7 +333,7 @@ function Enemy1(game,event,param){
 		}
 	});
 }
-Enemy1.prototype=Game.util.extend(Enemy,{
+Enemy1.prototype=Game.util.extend(EnemyStraight,{
 	color:"#ff0000",
 	speed:4,
 	score:10,
@@ -336,7 +342,7 @@ Enemy1.prototype=Game.util.extend(Enemy,{
 });
 
 function Enemy2(game,event,param){
-	Enemy.apply(this,arguments);
+	EnemyStraight.apply(this,arguments);
 	var t=this;
 
 	var wait=40,count=wait;
@@ -364,14 +370,14 @@ function Enemy2(game,event,param){
 		}
 	});
 }
-Enemy2.prototype=Game.util.extend(Enemy,{
+Enemy2.prototype=Game.util.extend(EnemyStraight,{
 	color:"#aa00aa",
 	speed:6,
 	score:15,
 });
 
 function Enemy3(game,event,param){
-	Enemy.apply(this,arguments);
+	EnemyStraight.apply(this,arguments);
 	var t=this;
 
 	var wait=40,count=wait;
@@ -392,14 +398,14 @@ function Enemy3(game,event,param){
 		}
 	});
 }
-Enemy3.prototype=Game.util.extend(Enemy,{
+Enemy3.prototype=Game.util.extend(EnemyStraight,{
 	color:"#00bb00",
 	speed:4,
 	score:15,
 });
 
 function Enemy4(game,event,param){
-	Enemy.apply(this,arguments);
+	EnemyStraight.apply(this,arguments);
 	var t=this;
 
 	var wait=40,count=wait;
@@ -427,7 +433,7 @@ function Enemy4(game,event,param){
 		}
 	});
 }
-Enemy4.prototype=Game.util.extend(Enemy,{
+Enemy4.prototype=Game.util.extend(EnemyStraight,{
 	color:"#007070",
 	speed:4,
 	score:25,
@@ -455,7 +461,29 @@ Enemy6.prototype=Game.util.extend(Enemy1,{
 	score:60,
 	font:"64px serif",
 	shot:EnemyBigShot,
+});
+//さインカーブを描く敵
+function Enemy7(game,event,param){
+	Enemy.apply(this,arguments);
 
+	var t=this;
+	var zero=t.y;
+
+	t.angle=0;	//角度
+
+	event.on("loop",function(){
+		t.angle+=t.angv;
+		t.x-=t.speed;
+		
+		if(t.angle>=2*Math.PI)t.angle-=2*Math.PI;
+		t.y=zero+t.radius*Math.sin(t.angle);
+	});
+}
+Enemy7.prototype=Game.util.extend(Enemy,{
+	score:60,
+	speed:4,
+	angv:Math.PI/16,
+	radius:150,
 });
 //---- BOSS
 function Boss(game,event,param){
@@ -640,7 +668,7 @@ function EnemyGenerator(game,event,param){
 	
 	t.stage=0;
 	
-	var scores=[null,0,150,400, 750, 1200, 2400, 4000];
+	var scores=[null,0,150,400, 750, 1200, 2400, 3800,5000];
 	
 	var l=scores.length-1;
 
@@ -707,6 +735,12 @@ function EnemyGenerator(game,event,param){
 					   r<0.5 ? Enemy3 :
 					   r<0.6 ? Enemy4 :
 					   r<0.85? Enemy5 : Enemy6;
+			case 8:
+				return r<0.15? Enemy2 :
+				       r<0.35? Enemy3 :
+					   r<0.5 ? Enemy4 :
+					   r<0.7 ? Enemy5 :
+					   r<0.85? Enemy6 : Enemy7;
 				
 			default:
 				return null;
@@ -1008,7 +1042,7 @@ game.config.fps=30;
 game.loop();
 
 function initGame(){
-	game.store.score=4000//0;
+	game.store.score=5000//0;
 	game.add(EnemyGenerator);
 	game.add(ScoreDisplay,{});
 
