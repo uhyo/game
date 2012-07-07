@@ -182,7 +182,7 @@ function Shot(game,event,param){
 	event.on("render",function(canvas,ctx){
 		//描画
 		ctx.fillStyle=t.color;
-		ctx.font="16px sans-serif";
+		ctx.font=t.font;
 		ctx.fillText("弾",t.x-8,t.y+8);
 	});
 }
@@ -192,6 +192,7 @@ Shot.prototype=Game.util.extend(Point,{
 	check:function(game){
 	},
 	color:"#000000",
+	font:"16px sans-serif",
 });
 function MyShot(game,event,param){
 	Shot.apply(this,arguments);
@@ -228,6 +229,16 @@ EnemyShot.prototype=Game.util.extend(Shot,{
 		}
 	},
 	power:10,
+});
+function EnemyBigShot(game,event,param){
+	EnemyShot.apply(this,arguments);
+}
+EnemyBigShot.prototype=Game.util.extend(EnemyShot,{
+	power:15,
+	width:20,
+	height:20,
+	font:"24px sans-serif",
+
 });
 //================= Enemies =============
 //base object
@@ -289,6 +300,7 @@ Enemy.prototype=Game.util.extend(EnemyBase,{
 	font:"22px sans-serif",
 	
 	speed:4,
+	startpoint:"right",
 });
 
 function Enemy1(game,event,param){
@@ -304,7 +316,7 @@ function Enemy1(game,event,param){
 				var c1=t.center(), c2=me.center();
 				var k=Math.atan2(c2.y-c1.y, c2.x-c1.x);
 				
-				game.add(EnemyShot,{
+				game.add(t.shot,{
 					x:c1.x, y:c1.y,
 					speedx:Math.cos(k)*10,
 					speedy:Math.sin(k)*10,
@@ -319,6 +331,8 @@ Enemy1.prototype=Game.util.extend(Enemy,{
 	color:"#ff0000",
 	speed:4,
 	score:10,
+	//使う弾
+	shot:EnemyShot,
 });
 
 function Enemy2(game,event,param){
@@ -419,6 +433,30 @@ Enemy4.prototype=Game.util.extend(Enemy,{
 	score:25,
 });
 
+function Enemy5(game,event,param){
+	Enemy3.apply(this,arguments);
+}
+Enemy5.prototype=Game.util.extend(Enemy3,{
+	color:"#009900",
+	speed:-4,
+	score:40,
+	startpoint:"left",
+});
+//でかい敵
+function Enemy6(game,event,param){
+	Enemy1.apply(this,arguments);
+}
+Enemy6.prototype=Game.util.extend(Enemy1,{
+	color:"#800000",
+	speed:3,
+	maxhp:50,
+	width:70,
+	height:70,
+	score:60,
+	font:"64px serif",
+	shot:EnemyBigShot,
+
+});
 //---- BOSS
 function Boss(game,event,param){
 	EnemyBase.apply(this,arguments);
@@ -602,23 +640,29 @@ function EnemyGenerator(game,event,param){
 	
 	t.stage=0;
 	
-	var scores=[null,0,150,400, 750, 1200];
+	var scores=[null,0,150,400, 750, 1200, 2400, 4000];
 	
 	var l=scores.length-1;
 
 	event.on("internal",function(){
+		var rr=r*game.count(MyMachine);
 		if(t.stage>0 && Math.random()<r){
 			var nextEnemy=getEnemy();
 			if(nextEnemy){
+				var p=nextEnemy.prototype.startpoint;
 				game.add(nextEnemy,{
-					x:game.width-10,
+					x:p==="right" ? game.width-10 : 2,
 					y:Math.floor(Math.random()*(game.height-25)),
 				});
 			}
 		}
-		if(t.stage<l && scores[t.stage+1]<=game.store.score){
+		var stagenow = t.stage;
+		while(t.stage<l && scores[t.stage+1]<=game.store.score){
 			//次のステージへ
 			t.stage++;
+		}
+		if(stagenow<t.stage){
+			//進んだ
 			game.add(AnnounceDisplay,{
 				str:"LEVEL "+t.stage,
 			});
@@ -652,6 +696,17 @@ function EnemyGenerator(game,event,param){
 			case 5:
 				//BOSS
 				return null;
+			case 6:
+				return r<0.1 ? Enemy1 :
+				       r<0.4 ? Enemy2 :
+					   r<0.7 ? Enemy3 :
+					   r<0.8 ? Enemy4 : Enemy5;
+			case 7:
+				return r<0.15? Enemy1 :
+				       r<0.3 ? Enemy2 :
+					   r<0.5 ? Enemy3 :
+					   r<0.6 ? Enemy4 :
+					   r<0.85? Enemy5 : Enemy6;
 				
 			default:
 				return null;
@@ -832,6 +887,8 @@ function EntryPanel(game,event,param){
 		ctx.fillStyle="rgba(191,191,191,0.7)";
 		ctx.fillRect(50,50,game.width-100,game.height-100);
 		ctx.fillStyle="#000000";
+		ctx.font="46px sans-serif";
+		ctx.fillText("シューティング",80,60);
 		ctx.font="30px sans-serif";
 		ctx.fillText("参加するにはEnterキーを押して下さい",70,100);
 		ctx.font="24px serif";
@@ -951,7 +1008,7 @@ game.config.fps=30;
 game.loop();
 
 function initGame(){
-	game.store.score=/*1200*/0;
+	game.store.score=4000//0;
 	game.add(EnemyGenerator);
 	game.add(ScoreDisplay,{});
 
