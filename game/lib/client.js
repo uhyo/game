@@ -66,11 +66,13 @@ Game.prototype.internal_init=function(){
 	//無効
 	this.event._old_emit=this.event.emit;
 	this.event.emit=function(){};
+
 };
 Game.prototype.start=function(){
 	//サーバーへユーザーを送る
 	this.user=this.newUser();
 	this.user.init();
+	this.entry(this.user);
 	socket.emit("entry");
 	
 };
@@ -95,6 +97,13 @@ Game.prototype.initObject=function(d){
 	//イベントを制限 die無効
 	d.event.removeAllListeners("internal");
 };
+
+/*function ClientManager(game){
+	Game.Manager.apply(this,arguments);
+}
+ClientManager.prototype=Game.util.extend(Game.Manager,{
+});*/
+
 
 //向こうの特殊形式を戻す
 function executeJSON(game,obj){

@@ -81,8 +81,8 @@ Game.prototype={
 	},
 	//ユーザーが登録された
 	entry:function(user){
-		this.manager.newUser(user);
 		this._users.push(user);
+		this.manager.newUser(user);
 		this.event.emit("entry",user);
 	},
 	//ユーザーがいなくなった
@@ -347,7 +347,8 @@ Game.LoopManager=function(game){
 Game.LoopManager.prototype={
 	start:function(){
 		var game=this.game, self=this;
-		this.usercount=game.
+		var ev=game.event;
+		this.usercount=game._users.length;
 		//ev.on("loop",this.mainloop.bind(this));
 		ev.emit("loopstart");
 		
