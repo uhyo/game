@@ -56,6 +56,15 @@ gaminginfo.on("new",function(game){
 			u.event.emit.apply(u.event,[obj.name].concat(obj.args));
 		});
 		socket.on("env",function(arr){
+			for(var i=0,l=arr.length;i<l;i++){
+				var o=arr[i];
+				if(o.$type==="obj"){
+					var u=game.objectsmap[o._id];
+					if(u){
+						setProperties(u,o.properties);
+					}
+				}
+			}
 		});
 		socket.emit("initok");
 	});
@@ -157,12 +166,12 @@ function executeJSON(game,obj){
 		return ret;
 	}
 
-	function setProperties(obj,map){
-		if(!obj)return; 
-		for(var key in map){
-			var value=map[key];
-			obj[key]=executeJSON(game,value);
-		}
+}
+function setProperties(obj,map){
+	if(!obj)return; 
+	for(var key in map){
+		var value=map[key];
+		obj[key]=executeJSON(game,value);
 	}
 }
 
