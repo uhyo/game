@@ -27,7 +27,7 @@ gaminginfo.on("new",function(game){
 			//新しいオブジェクトが追加された
 			//クライアント側に追加する
 			//console.log(window[obj.constructorName]);
-			console.log("add",obj.constructorName);
+			//console.log("add",obj.constructorName);
 			var o=game._old_add(window[obj.constructorName],executeJSON(game,obj.param));
 			o._id=obj._id;
 			//入れる

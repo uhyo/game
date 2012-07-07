@@ -152,6 +152,10 @@ function MyMachine(game,event,param){
 			game.event.emit("over",t,user);
 		}
 	});
+	event.on("recover",function(power){
+		t.hp+=power;
+		if(t.hp>t.maxhp)t.hp=t.maxhp;
+	});
 }
 MyMachine.prototype=Game.util.extend(Rect,{
 	width:36,
@@ -482,8 +486,99 @@ function Enemy7(game,event,param){
 Enemy7.prototype=Game.util.extend(Enemy,{
 	score:60,
 	speed:4,
-	angv:Math.PI/16,
+	angv:Math.PI/45,
 	radius:150,
+});
+//流れる敵の親
+function Enemy8_Parent(game,event,param){
+	var t=this;
+	t.y=param.y;
+	t.count=0,t.count2=0;
+	var wait=6,radius=null,lambda=15;
+	event.on("internal",function(){
+		if(t.count===0 && t.count2===0){
+			//最初
+			radius=Math.floor(Math.random()*80)+60;
+			lambda=Math.floor(Math.random()*6)+11;
+		}
+		if(++t.count >= wait){
+			//敵を発生させる
+
+			addEnemy(Enemy1,{
+				y:t.y+radius*Math.sin(t.count2*Math.PI*2/lambda),
+			});
+			t.count2++, t.count=0;
+			if(t.count2>=lambda){
+				event.emit("die");
+			}
+		}
+	});
+}
+//アイテム
+function Item(game,event,param){
+	Point.apply(this,arguments);
+	//初期状態
+	/*param{
+		x:x, y:y, speedx:speedx, speedy:speedy
+	}*/
+	var t=this;
+	t.x=param.x, t.y=param.y;
+	
+	event.on("internal",function(){
+		if(t.x<-10 || t.y<-10 || t.x>=game.width || t.y>=game.height){
+			//画面から出た
+			event.emit("die");
+		}
+		t.check(game,event);
+	});
+	
+	event.on("loop",function(){
+		//毎フレームの動作
+		t.x-=t.speedx;
+		//色変える
+		t.color="hsl("+(Math.floor(t.x/2)%360)+",100%,50%)";
+
+	});
+	event.on("render",function(canvas,ctx){
+		//描画
+		//console.log(t.color+" "+t.font+" "+t.str+" "+t.x+" "+t.y);
+		ctx.fillStyle=t.color;
+		ctx.font=t.font;
+		ctx.fillText(t.str,t.x-8,t.y+8);
+	});
+}
+Item.prototype=Game.util.extend(Point,{
+	width:40,
+	height:20,
+	speedx:4,
+	str:"ITEM",
+	font:"22px sans-serif bold",
+	startpoint:"right",
+	check:function(game,event){
+		var arr=game.filter(MyMachine);
+		var t=this;
+		for(var i=0,l=arr.length;i<l;i++){
+			var obj=arr[i];
+			if(t.hitWith(obj)){
+				event.emit("die");
+				t.effect(obj);
+			}
+		}
+	},
+	effect:function(machine){},
+	color:"#000000",
+});
+//回復アイテム
+function Item1(game,event,param){
+	Item.apply(this,arguments);
+}
+Item1.prototype=Game.util.extend(Item,{
+	str:"回復",
+	power:40,
+	effect:function(machine){
+		//回復
+		machine.event.emit("recover",this.power);
+	},
 });
 //---- BOSS
 function Boss(game,event,param){
@@ -668,7 +763,7 @@ function EnemyGenerator(game,event,param){
 	
 	t.stage=0;
 	
-	var scores=[null,0,150,400, 750, 1200, 2400, 3800,5000];
+	var scores=[null,0,150,400, 750, 1200, 2400, 3800,5000,7000];
 	
 	var l=scores.length-1;
 
@@ -677,11 +772,7 @@ function EnemyGenerator(game,event,param){
 		if(t.stage>0 && Math.random()<r){
 			var nextEnemy=getEnemy();
 			if(nextEnemy){
-				var p=nextEnemy.prototype.startpoint;
-				game.add(nextEnemy,{
-					x:p==="right" ? game.width-10 : 2,
-					y:Math.floor(Math.random()*(game.height-25)),
-				});
+				addEnemy(nextEnemy);
 			}
 		}
 		var stagenow = t.stage;
@@ -720,32 +811,52 @@ function EnemyGenerator(game,event,param){
 			case 4:
 				return r<0.1 ? Enemy1 :
 				       r<0.4 ? Enemy2 :
-				       r<0.8 ? Enemy3 : Enemy4;
+				       r<0.8 ? Enemy3 :
+					   r<0.96? Enemy4 : Item1;
 			case 5:
 				//BOSS
-				return null;
+				return r<0.05? Item1 : null;
 			case 6:
 				return r<0.1 ? Enemy1 :
 				       r<0.4 ? Enemy2 :
 					   r<0.7 ? Enemy3 :
-					   r<0.8 ? Enemy4 : Enemy5;
+					   r<0.8 ? Enemy4 :
+					   r<0.96? Enemy5 : Item1;
 			case 7:
 				return r<0.15? Enemy1 :
 				       r<0.3 ? Enemy2 :
 					   r<0.5 ? Enemy3 :
 					   r<0.6 ? Enemy4 :
-					   r<0.85? Enemy5 : Enemy6;
+					   r<0.8 ? Enemy5 : 
+					   r<0.9 ? Enemy6 : Item1;
 			case 8:
 				return r<0.15? Enemy2 :
 				       r<0.35? Enemy3 :
 					   r<0.5 ? Enemy4 :
-					   r<0.7 ? Enemy5 :
-					   r<0.85? Enemy6 : Enemy7;
+					   r<0.65? Enemy5 :
+					   r<0.8 ? Enemy6 : 
+					   r<0.9 ? Enemy7 : Item1;
+			case 9:
+				return r<0.15? Enemy2 :
+					   r<0.3 ? Enemy3 :
+					   r<0.4 ? Enemy4 :
+					   r<0.55? Enemy5 :
+					   r<0.7 ? Enemy6 :
+					   r<0.85? Enemy7 : 
+					   r<0.9 ? Enemy8_Parent : Item1;
 				
 			default:
 				return null;
 		}
 	}
+}
+//ふつうの敵を発生させる
+function addEnemy(constructor,option){
+	var p=constructor.prototype.startpoint;
+	if(!option)option={};
+	if(!option.x && option.x!==0)option.x=p==="right" ? game.width-10 : 2;
+	if(!option.y && option.y!==0)option.y=Math.floor(Math.random()*(game.height-25));
+	game.add(constructor,option);
 }
 
 //スコアをディスプレイする
@@ -1042,7 +1153,7 @@ game.config.fps=30;
 game.loop();
 
 function initGame(){
-	game.store.score=5000//0;
+	game.store.score=7000//0;
 	game.add(EnemyGenerator);
 	game.add(ScoreDisplay,{});
 
