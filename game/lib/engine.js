@@ -212,6 +212,7 @@ Game.prototype={
 	//------------------
 	defaultConfig:{
 		fps:30,
+		adjust:5,
 		stopWithNoUser:true,
 	}
 };

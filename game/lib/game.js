@@ -79,6 +79,9 @@ exports.Server.prototype=Game.util.extend(ev.EventEmitter,{
 			gaminginfo.on("private",function(socket,name,obj){
 				socket.emit(name,obj);
 			});
+			gaminginfo.on("volatile",function(name,obj){
+				io.sockets.volatile.emit(name,obj);
+			});
 			io.sockets.on("connection",function(socket){
 				//ユーザーの襲来
 				//ユーザー入力のイベント

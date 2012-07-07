@@ -55,6 +55,8 @@ gaminginfo.on("new",function(game){
 			if(!u)return;
 			u.event.emit.apply(u.event,[obj.name].concat(obj.args));
 		});
+		socket.on("env",function(arr){
+		});
 		socket.emit("initok");
 	});
 

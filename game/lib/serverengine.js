@@ -210,6 +210,7 @@ function ServerLoopTransporter(){
 	ServerTransporter.apply(this,arguments);
 	//LoopTransporterではイベントをまとめる
 	this.store=[];
+	this.count=this.wait=this.game.config.fps*this.game.config.adjust;	//5秒に1回かな・・・
 }
 ServerLoopTransporter.prototype=Game.util.extend(ServerTransporter,{
 	broadcast:function(name,obj){
@@ -227,6 +228,11 @@ ServerLoopTransporter.prototype=Game.util.extend(ServerTransporter,{
 			this.gaminginfo.emit("broadcast",this.store[0].name,this.store[0].obj);
 		}
 		this.store.length=0;
+		if(--this.count===0){
+			//調整してあげる
+			this.gaminginfo.emit("volatile","env",this.game.wholeEnvironment());
+			this.count=this.wait;
+		}
 	},
 });
 Game.prototype.transporter=ServerTransporter;
