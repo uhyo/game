@@ -552,7 +552,7 @@ Item.prototype=Game.util.extend(Point,{
 	height:20,
 	speedx:4,
 	str:"ITEM",
-	font:"22px sans-serif bold",
+	font:"bold 22px sans-serif",
 	startpoint:"right",
 	check:function(game,event){
 		var arr=game.filter(MyMachine);
@@ -1003,6 +1003,27 @@ function AnnounceDisplay(game,event,param){
 		ctx.fillText(t.str,t.x,t.y);
 	});
 }
+//みるだけーのパネル
+function LivePanel(game,event,param){
+	var user=param.user;
+	var e=user.event;
+
+	//ユーザープライベートなオブジェクト
+	this.private=user;
+	e.on("disconnect",function(){
+		event.emit("die");
+	});
+	event.on("render",function(canvas,ctx){
+		ctx.fillStyle="rgba(255,0,0,0.7)";
+		ctx.font="80px fantasy";
+		ctx.fillText("LIVE",game.width-200,80);
+		if(game.count(MyMachine)===0){
+			ctx.font="50px sans-serif";
+			ctx.fillStyle="rgba(0,0,0,0.8)";
+			ctx.fillText("参加者募集中",50,game.height-20);
+		}
+	});
+}
 //エントリーのパネル
 function EntryPanel(game,event,param){
 	var user=param.user;
@@ -1097,7 +1118,7 @@ game.init(Game.ClientCanvasView,{
 });
 game.useUser(Game.KeyboardUser);
 
-game.event.on("entry",function(user){
+game.event.on("entry",function(user,opt){
 	//新しいユーザー
 	/*game.add(MyMachine,{
 		x:50,
@@ -1105,9 +1126,16 @@ game.event.on("entry",function(user){
 		speed:6,
 		user:user,
 	});*/
-   game.add(EntryPanel,{
-	   user:user,
-   });
+   if(opt.live){
+	   //liveフラグがたっている（みるだけ）
+	   game.add(LivePanel,{
+		   user:user,
+	   });
+   }else{
+	   game.add(EntryPanel,{
+		   user:user,
+	   });
+   }
 });
 //game.add(FPSChecker,{});
 initGame();

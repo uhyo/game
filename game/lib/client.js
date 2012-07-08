@@ -81,10 +81,12 @@ Game.prototype.internal_init=function(){
 };
 Game.prototype.start=function(){
 	//サーバーへユーザーを送る
-	this.user=this.newUser();
-	this.user.init();
-	this.entry(this.user);
-	socket.emit("entry");
+	var path=location.pathname.slice(1);
+	var opt=_g_routes[path];
+	this.user=this.newUser(opt);
+	this.user.init(opt);
+	this.entry(this.user,opt);
+	socket.emit("entry",opt);
 	
 };
 Game.prototype._old_add=Game.prototype.add;

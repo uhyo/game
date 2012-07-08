@@ -9,6 +9,7 @@ require('./serverengine.js');
 //サーバー作動
 exports.Server=function(){
 	ev.EventEmitter.apply(this,arguments);
+	this.routeOptions={};
 }
 exports.Server.prototype=Game.util.extend(ev.EventEmitter,{
 	io:function(cb){
@@ -22,8 +23,12 @@ exports.Server.prototype=Game.util.extend(ev.EventEmitter,{
 		require(this.gamefile);
 
 	},
+	route:function(name,func){
+		this.routeOptions[name]=func;
+	},
 	initServer:function(options){
 		//init server
+		var t=this;
 		var app=this.app=express.createServer();
 		app.configure(function(){
 			app.set('views',__dirname+'/views');
@@ -31,13 +36,22 @@ exports.Server.prototype=Game.util.extend(ev.EventEmitter,{
 			app.set('view options',{layout:false});
 		});
 		app.use(app.router);
-		app.get('/',function(req,res){
+		app.get('/:mode?',function(req,res){
 			//順番が大事かもしれない
+			var mode=req.params.mode;
+			if(!mode)mode="";
+			var option=t.routeOptions[mode];
+			if(!option){
+				res.send(404);
+				return;
+			}
 			res.render('index',{scriptsdir:"/script",title:options.title,scripts:[
-				"EventEmitter.min.js",
-				"engine.js",
-				"client.js",
-				"game.js"]});
+					   "EventEmitter.min.js",
+					   "engine.js",
+					   "client.js",
+					   "route.js",
+					   "game.js"],
+			});
 		});
 		app.get('/script/:file',function(req,res,next){
 			var filename;
@@ -54,6 +68,9 @@ exports.Server.prototype=Game.util.extend(ev.EventEmitter,{
 				case 'client.js':
 					filename='./client.js';
 					break;
+				case 'route.js':
+					res.send("_g_routes="+JSON.stringify(t.routeOptions),{"Content-Type":"text/javascript"});
+					return;
 			}
 			if(!filename){
 				next();
@@ -95,19 +112,19 @@ exports.Server.prototype=Game.util.extend(ev.EventEmitter,{
 					}
 
 				});
-				socket.on("entry",function(){
+				socket.on("entry",function(option){
 					// ユーザーを教えてあげる
 					//（サーバー側用ユーザーオブジェクト作成）
 					//ここでユーザーに現在の状況を教える
 					var env=game.wholeEnvironment();
-					user=game.newUser(event);
+					user=game.newUser(option,event);
 					//ユーザーとソケットを結びつける
 					Object.defineProperty(user,"_socket",{
 						value:socket,
 					});
 					socket.on("initok",function(){
 						//game.event.emit("entry",user);
-						game.entry(user);
+						game.entry(user,option);
 						game._users.push(user);
 						socket.removeAllListeners("initok");
 					});

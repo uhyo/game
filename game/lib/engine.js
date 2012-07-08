@@ -77,22 +77,23 @@ Game.prototype={
 		//hard
 		//var user=new Game.User();
 		var user=this.newUser();
-		this.entry(user);
+		this.entry(user,{});
 	},
 	//ユーザーが登録された
-	entry:function(user){
+	entry:function(user,opt){
 		this._users.push(user);
 		this.manager.newUser(user);
-		this.event.emit("entry",user);
+		this.event.emit("entry",user,opt);
 	},
 	//ユーザーがいなくなった
 	byeUser:function(user){
 		this._users=this._users.filter(function(x){return x!=user});
 		this.manager.bye(user);
 	},
-	newUser:function(){
+	newUser:function(option){
+		if(!option)option={};
 		var user=new (this.defaultUser)();
-		user.init();
+		user.init(option);
 		return user;
 	},
 	useUser:function(userobj){

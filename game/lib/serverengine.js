@@ -24,13 +24,13 @@ Game.prototype.start=function(){
 	//何もしない
 };
 Game.prototype._old_newUser=Game.prototype.newUser;
-Game.prototype.newUser=function(event){
+Game.prototype.newUser=function(option,event){
 	//新しいユーザー（サーバー用）
 	//var user=this._old_newUser();
 	var game=this;
 	var user=new (this.defaultUser)();
 	//ここでサーバー用に（中身なし）
-	ServerUser.prototype.init.apply(user);
+	ServerUser.prototype.init.apply(user,option);
 	user.event=event;
 	event._old_emit=event.emit;
 	event.emit=function(name){
