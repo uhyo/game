@@ -149,8 +149,10 @@ function MyMachine(game,event,param){
 			game.event.emit("effect","explode",t.center());
 			//死ぬ
 			event.emit("die");
-			game.event.emit("over",t,user);
 		}
+	});
+	event.on("die",function(){
+		game.event.emit("over",t,user);
 	});
 	event.on("recover",function(power){
 		t.hp+=power;
@@ -187,10 +189,11 @@ function Shot(game,event,param){
 		//描画
 		ctx.fillStyle=t.color;
 		ctx.font=t.font;
-		ctx.fillText("弾",t.x-8,t.y+8);
+		ctx.fillText(t.str,t.x-8,t.y+8);
 	});
 }
 Shot.prototype=Game.util.extend(Point,{
+	str:"弾",
 	width:10,
 	height:10,
 	check:function(game){
@@ -750,7 +753,171 @@ function EnemyAttendantRound1(game,event,param){
 }
 EnemyAttendantRound1.prototype=Game.util.extend(EnemyAttendantRound,{
 });
+//まっすぐ撃つ
+function EnemyAttendantRound2(game,event,param){
+	EnemyAttendantRound.apply(this,arguments);
+	var t=this;
+	
+	var wait=240, count=wait;
+	var parent=t.parent;
+	
+	t.mode=0;
+	event.on("internal",function(){
+		if(t.mode==0){
+			if(--count <= 0){
+				//開く
+				count=30;
+				event.emit("modechange",1);
+			}
+		}else if(t.mode==1){
+			if(--count <= 0){
+				//撃つ
+				var me=game.random(MyMachine);
+				if(me){
+					var c1=t.center(), c2=me.center();
+					var k=Math.atan2(c2.y-c1.y, c2.x-c1.x);
 
+					game.add(EnemyAttendantRound2Shot,{
+						x:c1.x, y:c1.y,
+						speedx:Math.cos(k)*14,
+						speedy:Math.sin(k)*14,
+					});
+					event.emit("die");
+				}
+			}
+		}
+	});
+	event.on("loop",function(){
+		if(t.mode==1){
+			t.radius++;
+		}
+	});
+	event.on("modechange",function(mode){
+		t.mode=mode;
+	});
+}
+EnemyAttendantRound2.prototype=Game.util.extend(EnemyAttendantRound,{
+	str:"葉",
+	font:"26px serif",
+	color:"#009900",
+	width:26,
+	height:26,
+});
+function EnemyAttendantRound2Shot(game,event,param){
+	EnemyShot.apply(this,arguments);
+}
+EnemyAttendantRound2Shot.prototype=Game.util.extend(EnemyShot,{
+	str:"葉",
+	font:"26px serif",
+	color:"#009900",
+	width:26,
+	height:26,
+});
+
+//LEVEL10ボス
+function Boss2(game,event,param){
+	Boss.apply(this,arguments);
+	
+	var t=this;
+	t.mode=0;
+	
+	var children=[];
+	
+	t.movup=true;	//上へ
+	
+	var atkwait=14, count=atkwait;
+	
+	event.on("internal",function(){
+		//進行判定
+		switch(t.mode){
+		case 1:
+			//敵出現
+			makebarrier();
+			event.emit("modechange",2);
+			break;
+		case 2:
+			//攻撃
+			if(--count <=0){
+				//発射
+				var me=game.random(MyMachine);
+				if(me){
+					var c1=t.center(), c2=me.center();
+					var k=Math.atan2(c2.y-c1.y, c2.x-c1.x);
+					
+					game.add(EnemyShot,{
+						x:c1.x, y:c1.y,
+						speedx:Math.cos(k)*12,
+						speedy:Math.sin(k)*12,
+					});
+				}
+				count=atkwait;
+				if(children.every(function(x){return !game.alive(x)})){
+					event.emit("modechange",3);
+					count=atkwait*8;
+				}
+
+			}
+			break;
+		case 3:
+			//補充
+			if(--count <=0){
+				event.emit("modechange",1);
+			}
+			break;
+		}
+	});
+	function makebarrier(){
+		children.length=0;
+		for(var i=0,l=16;i<l;i++){
+			//護衛の敵
+			children.push(game.add(EnemyAttendantRound2,{
+				angle:Math.PI*2*i/l,
+				parent:t,
+				radius:0,
+			}));
+		}
+	}
+	
+	event.on("loop",function(){
+		switch(t.mode){
+		case 0:
+			//登場
+			t.x -= 5;
+			if(t.x <= game.width-t.width*2){
+				//t.mode=1;
+				event.emit("modechange",1);
+			}
+			break;
+		case 2:
+			//上下移動
+			if(t.movup){
+				t.y-=4;
+				if(t.y<30){
+					t.movup=false;
+				}
+			}else{
+				t.y+=4;
+				if(t.y>game.height-40){
+					t.movup=true;
+				}
+			}
+			break;
+		}
+	});
+	
+	//もーどちぇんじ
+	event.on("modechange",function(m){
+		t.mode=m;
+	});
+}
+Boss2.prototype=Game.util.extend(Boss,{
+	score:2000,
+	maxhp:1200,
+	font:"40px serif",
+	width:120,
+	color:"#666600",
+	str:"BOSS",
+});
 
 
 function EnemyGenerator(game,event,param){
@@ -763,13 +930,14 @@ function EnemyGenerator(game,event,param){
 	
 	t.stage=0;
 	
-	var scores=[null,0,150,400, 750, 1200, 2400, 3800,5000,7000];
+	var scores=[null,0,150,400, 750, 1200, 2400, 3800,5000,7000,10000];
+	var clear=12000;
 	
 	var l=scores.length-1;
 
 	event.on("internal",function(){
 		var rr=r*game.count(MyMachine);
-		if(t.stage>0 && Math.random()<r){
+		if(t.stage>0 && Math.random()<rr){
 			var nextEnemy=getEnemy();
 			if(nextEnemy){
 				addEnemy(nextEnemy);
@@ -794,8 +962,30 @@ function EnemyGenerator(game,event,param){
 						y:game.height/2,
 					});
 					break;
+				case 10:
+					game.add(Boss2,{
+						x:game.width,
+						y:game.height/2,
+					});
+					break;
 			}
 		}
+		if(game.store.score>=clear){
+			game.add(AnnounceDisplay,{
+				str:"Game Clear",
+			});
+			clear=Infinity;
+			game.delay(game.config.fps*10,function(){
+				var arr=game.filter(MyMachine);
+				arr.forEach(function(machine){
+					machine.event.emit("die");
+				});
+				game.clean();
+				initGame();
+			});
+				
+		}
+			
 	});
 	
 	function getEnemy(){
@@ -844,6 +1034,9 @@ function EnemyGenerator(game,event,param){
 					   r<0.7 ? Enemy6 :
 					   r<0.85? Enemy7 : 
 					   r<0.9 ? Enemy8_Parent : Item1;
+			case 10:
+				//BOSS
+				return r<0.08? Item1 : null;
 				
 			default:
 				return null;
@@ -1157,6 +1350,7 @@ game.event.on("over",function(userMachine,user){
 			if(game.count(MyMachine)===0){
 				game.clean();
 				game.add(GameOverDisplay,{});
+				game.event.emit("gameover");
 				game.delay(game.config.fps*10,function(){
 					//再開
 					initGame();
@@ -1181,7 +1375,7 @@ game.config.fps=30;
 game.loop();
 
 function initGame(){
-	game.store.score=7000//0;
+	game.store.score=0//0;
 	game.add(EnemyGenerator);
 	game.add(ScoreDisplay,{});
 
