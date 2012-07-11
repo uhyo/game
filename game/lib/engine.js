@@ -126,8 +126,14 @@ Game.prototype={
 		//delayの処理
 		arr=this.delays;
 		for(i=0,l=arr.length;i<l;i++){
-			if(--arr[i].remains <= 0){
-				arr[i].func();
+			var o=arr[i];
+			if(o.cond && !o.cond()){
+				arr.splice(i,1);
+				i--,l=arr.length;
+				continue;
+			}
+			if(--o.remains <= 0){
+				o.func();
 				arr.splice(i,1);
 				i--,l=arr.length;
 			}
@@ -206,10 +212,15 @@ Game.prototype={
 			func:func,
 		});
 	},
+	delaywhile:function(time,cond,func){
+		//cond()がfalseを返した場合delayを中断する
+		this.delays.push({
+			remains:time,
+			cond:cond,
+			func:func,
+		});
+	},
 	//event
-	
-	
-	
 	//------------------
 	defaultConfig:{
 		fps:30,
@@ -272,6 +283,7 @@ Game.ClientCanvasView.prototype=Game.util.merge(new Game.ClientView,{
 Game.User=function(){
 	this.event=new EventEmitter();
 	this.internal=true;	//内部フラグ
+	this.alive=true;	//まだ生存しているかどうか
 };
 Game.User.prototype={
 	init:function(){},
@@ -392,7 +404,7 @@ Game.LoopManager.prototype={
 	},
 	loopstop:function(){
 		this.stop_flg=true;
-		console.log("stoping...");
+		console.log("stopping...");
 	},
 	bye:function(user){
 		this.usercount--;

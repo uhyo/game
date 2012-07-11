@@ -30,6 +30,7 @@ Game.prototype.newUser=function(option,event){
 	var game=this;
 	var user=new (this.defaultUser)();
 	//ここでサーバー用に（中身なし）
+	user.internal=false;
 	ServerUser.prototype.init.apply(user,option);
 	user.event=event;
 	event._old_emit=event.emit;

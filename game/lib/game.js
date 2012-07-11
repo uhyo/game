@@ -108,6 +108,7 @@ exports.Server.prototype=Game.util.extend(ev.EventEmitter,{
 					//切断された
 					event.emit("disconnect");
 					if(user){
+						user.alive=false;
 						game.byeUser(user);
 					}
 

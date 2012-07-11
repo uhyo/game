@@ -981,7 +981,7 @@ function EnemyGenerator(game,event,param){
 					machine.event.emit("die");
 				});
 				game.clean();
-				initGame();
+				game.event.emit("initgame");
 			});
 				
 		}
@@ -1231,14 +1231,8 @@ function EntryPanel(game,event,param){
 	e.on("keydown",function(ev){
 		//はじまる
 		e.removeAllListeners("keydown");
-		game.add(MyMachine,{
-			x:50,
-			y:50,
-			speed:6,
-			user:user,
-		});
 		//しらせる
-		game.event.emit("newMachine");
+		event.emit("enter");
 		event.emit("die");
 	});
 
@@ -1319,19 +1313,46 @@ game.event.on("entry",function(user,opt){
 		speed:6,
 		user:user,
 	});*/
-   if(opt.live){
-	   //liveフラグがたっている（みるだけ）
-	   game.add(LivePanel,{
-		   user:user,
-	   });
-   }else{
-	   game.add(EntryPanel,{
-		   user:user,
-	   });
-   }
+	newPanel(user);
+	function newPanel(user){
+		var panel;
+		if(opt.live){
+			panel=game.add(LivePanel,{
+				user:user,
+			});
+		}else{
+
+			panel=game.add(EntryPanel,{
+				user:user,
+			});
+			panel.event.on("enter",function(){
+				//参戦
+				game.add(MyMachine,{
+					x:50,
+					y:50,
+					speed:6,
+					user:user,
+				});
+				game.event.emit("newMachine");
+			});
+		}
+		var handler=function(){
+			if(!game.alive(panel)){
+				//Zombie panel!
+				newPanel(user);
+			}
+		};
+		game.event.on("initgame",handler);
+		user.event.on("disconnect",function(){
+			game.event.removeListener("initgame",handler);
+		});
+	}
 });
 //game.add(FPSChecker,{});
-initGame();
+game.event.on("initgame",function(){
+	initGame();
+});
+game.event.emit("initgame");
 
 //スコア管理
 game.event.on("getscore",function(delta){
@@ -1345,7 +1366,10 @@ game.event.on("over",function(userMachine,user){
 	if(arr.length==0){
 		//もういない(30秒)
 		game.add(ContinueCountDisplay,{remains:game.config.fps*30});
-		game.delay(game.config.fps*30,function(){
+		game.delaywhile(game.config.fps*30,function(){
+			//条件
+			return game.count(MyMachine)===0;
+		},function(){
 			//誰もいない
 			if(game.count(MyMachine)===0){
 				game.clean();
@@ -1353,8 +1377,7 @@ game.event.on("over",function(userMachine,user){
 				game.event.emit("gameover");
 				game.delay(game.config.fps*10,function(){
 					//再開
-					initGame();
-
+					game.event.emit("initgame");
 				});
 			}
 		});
@@ -1381,9 +1404,3 @@ function initGame(){
 
 	game.add(EffectProcessor,{});
 }
-
-
-
-
-
-
