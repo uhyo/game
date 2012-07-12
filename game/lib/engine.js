@@ -152,7 +152,7 @@ Game.prototype={
 		
 		var datastore=Game.util.clone(param);
 		
-		var d=new constructor(this,instance,datastore);
+		var d=new constructor(this,instance,datastore,this.view);
 		
 		//d.event = instance;
 		Object.defineProperty(d,"event",{
@@ -220,6 +220,19 @@ Game.prototype={
 			func:func,
 		});
 	},
+	//ストッパーつき関数登録
+	delaystopper:function(time,func){
+		this.delay(time,func);
+		return function(){
+			var d=this.delays;
+			for(var i=0,l=d.length;i<l;i++){
+				if(d[i].func===func){
+					d.splice(i,1);
+					break;
+				}
+			}
+		};
+	},
 	//event
 	//------------------
 	defaultConfig:{
@@ -251,9 +264,9 @@ Game.ClientView=function(){
 Game.ClientView.prototype=Game.util.merge(new Game.View,{
 	mainloop:function(objects){
 		//override main loop
-		this.draw(objects);
+		this.render(objects);
 	},
-	draw:function(objects){
+	render:function(objects){
 	},
 });
 Game.ClientCanvasView=function(){
@@ -270,13 +283,21 @@ Game.ClientCanvasView.prototype=Game.util.merge(new Game.ClientView,{
 		wrapper.appendChild(c);
 		document.body.appendChild(wrapper);
 	},
-	draw:function(objects){
+	render:function(objects){
 		var c=this.canvas, ctx=c.getContext('2d');
 		ctx.clearRect(0,0,c.width,c.height);
 		for(var i=0,l=objects.length;i<l;i++){
 			objects[i].event.emit("render",c,ctx);
 		}
 	},
+});
+Game.ClientDOMView=function(){
+	Game.ClientView.apply(this);
+};
+Game.ClientDOMView.prototype=Game.util.extend(Game.ClientView,{
+	init:function(param){
+		Game.ClientView.prototype.init.apply(this,arguments);
+	}
 });
 
 //User input

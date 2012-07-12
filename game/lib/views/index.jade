@@ -5,7 +5,6 @@ html
     title= title
     script(src="/socket.io/socket.io.js")
   body
-    p 上下左右キーで自分を操作してZキーで弾を発射します Enterキーで参加できます 死んだらしばらく待つか、F5キーを押しましょう
     each filename in scripts
       script(src="#{scriptsdir}/#{filename}",type="text/javascript")
     

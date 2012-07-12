@@ -1383,11 +1383,14 @@ game.event.on("over",function(userMachine,user){
 		});
 	}
 	//45秒あとに再開できる
-	game.delay(game.config.fps*45,function(){
+	var stop=game.delaystopper(game.config.fps*45,function(){
+		if(!user.alive)return;
 		game.add(EntryPanel,{
 			user:user,
 		});
 	});
+	game.once("initgame",stop);
+
 });
 
 game.start();
