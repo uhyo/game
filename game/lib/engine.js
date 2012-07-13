@@ -293,11 +293,20 @@ Game.ClientCanvasView.prototype=Game.util.merge(new Game.ClientView,{
 });
 Game.ClientDOMView=function(){
 	Game.ClientView.apply(this);
+	//body直下に描画するべきもの
+	this.toprender=null;
 };
 Game.ClientDOMView.prototype=Game.util.extend(Game.ClientView,{
 	init:function(param){
 		Game.ClientView.prototype.init.apply(this,arguments);
-	}
+	},
+	top:function(obj){
+		this.toprender=obj;
+	},
+	child:function(parent,child){
+	},
+	render:function(obj){
+	},
 });
 
 //User input
