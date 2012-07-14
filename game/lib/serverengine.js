@@ -17,7 +17,9 @@ Game.prototype.internal_init=function(){
 };
 Game.prototype.init=function(view,viewparam){
 	//It's dummy!
-	this.view=new ServerView();
+	//this.view=new ServerView(this,view);
+	this.view=new view(this,viewparam);
+	this.view.server=true;
 	this.view.init(viewparam);
 };
 Game.prototype.start=function(){
@@ -40,10 +42,6 @@ Game.prototype.newUser=function(option,event){
 		//全員へ
 		game.transport.userevent(user,name,args);
 	};
-	//ユーザーに対してIDを付加
-	Object.defineProperty(user,"_id",{
-		value:this.uniqueId()
-	});
 	return user;
 };
 //オブジェクトを追加
@@ -56,7 +54,6 @@ Game.prototype._old_initObject=Game.prototype.initObject;
 Game.prototype.initObject=function(d){
 	//ユニークIDをあげる
 	this._old_initObject(d);
-	d._id=this.uniqueId();
 	var ev=d.event;
 	var game=this;
 	ev._old_emit=ev.emit;
@@ -145,8 +142,15 @@ Game.prototype.wholeEnvironment=function(){
    }));
 };
 
-function ServerView(){
+function ServerView(game,view){
 	Game.View.apply(this);
+	//viewの中身をからっぽにする
+	var dummy=new view(game);
+	for(var key in dummy){
+		if(typeof dummy[key]==="function"){
+			this[key]=function(){};
+		}
+	}
 }
 ServerView.prototype=Game.util.extend(Game.View,{
 });

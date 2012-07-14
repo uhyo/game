@@ -70,7 +70,7 @@ Game.prototype={
 	},
 	init:function(view,viewparam){
 		//hard
-		this.view = new view();
+		this.view = new view(this);
 		this.view.init(viewparam);
 	},
 	start:function(){
@@ -93,6 +93,10 @@ Game.prototype={
 	newUser:function(option){
 		if(!option)option={};
 		var user=new (this.defaultUser)();
+		//ユーザーに対してIDを付加
+		Object.defineProperty(user,"_id",{
+			value:this.uniqueId()
+		});
 		user.init(option);
 		return user;
 	},
@@ -174,6 +178,7 @@ Game.prototype={
 		return d;
 	},
 	initObject:function(d){
+		d._id=this.uniqueId();
 		d.event.on("die",function(){
 			d._flg_dying=true;	//dying flag
 		}.bind(this));
@@ -242,8 +247,9 @@ Game.prototype={
 	}
 };
 
-Game.View=function(){
-	
+Game.View=function(game){
+	this.game=game;
+	this.server=false;	//サーバーサイドかどうか
 };
 Game.View.prototype={
 	init:function(param){
@@ -259,7 +265,7 @@ Game.View.prototype={
 };
 
 Game.ClientView=function(){
-	Game.View.apply(this);
+	Game.View.apply(this,arguments);
 };
 Game.ClientView.prototype=Game.util.merge(new Game.View,{
 	mainloop:function(objects){
@@ -270,7 +276,7 @@ Game.ClientView.prototype=Game.util.merge(new Game.View,{
 	},
 });
 Game.ClientCanvasView=function(){
-	Game.ClientView.apply(this);
+	Game.ClientView.apply(this,arguments);
 };
 Game.ClientCanvasView.prototype=Game.util.merge(new Game.ClientView,{
 	init:function(param){
@@ -292,20 +298,95 @@ Game.ClientCanvasView.prototype=Game.util.merge(new Game.ClientView,{
 	},
 });
 Game.ClientDOMView=function(){
-	Game.ClientView.apply(this);
+	Game.ClientView.apply(this,arguments);
 	//body直下に描画するべきもの
 	this.toprender=null;
 };
 Game.ClientDOMView.prototype=Game.util.extend(Game.ClientView,{
 	init:function(param){
 		Game.ClientView.prototype.init.apply(this,arguments);
+		this.nodeMap={};	//_idをキーにしたい
+		/*(_id):{
+		  node:(Node)
+		  dependency:[obj,obj,...]
+		}*/
+		this.stack=[];	//現在のオブジェクト
+		this.stacktop=null;
 	},
 	top:function(obj){
 		this.toprender=obj;
+		this.rerender();
 	},
-	child:function(parent,child){
+	//走査して書き直す
+	rerender:function(){
+		this.render(this.toprender);
+		//hard
+		while(document.body.hasChildNodes()){
+			document.body.removeChild(document.body.firstChild);
+		}
+		var m=this.getMap(this.toprender);
+		document.body.appendChild(m.node);
 	},
+
+	//スタック関連
+	_addStack:function(obj){
+		this.stack.push(obj);
+		this.stacktop=obj;
+	},
+	_popStack:function(){
+		var o=this.stack.pop();
+		this.stacktop=this.stack[this.stack.length-1];
+		return o;
+	},
+	getMap:function(obj){
+		var m=this.nodeMap[obj._id];
+		if(!m){
+			m=this.nodeMap[obj._id]={
+				node:null,
+				dependency:[],
+			};
+		}
+		return m;
+	},
+
+	//そのオブジェクト
 	render:function(obj){
+		if(this.stacktop){
+			//そのオブジェクトに依存する
+			var m=this.getMap(this.stacktop);
+			//そのオブジェクトに依存している
+			m.dependency.push(obj);
+		}
+		this._addStack(obj);
+		//レンダリングしてもらう
+		var mm=this.getMap(obj);
+		mm.dependency=[];	//依存関係初期化
+		obj.render(this);
+		//レンダリング終了
+		this._popStack();
+	},
+	//トップのノードを作る
+	newItem:function(){
+		var t=this.stacktop;
+		if(!t)throw new Error("empty stack");
+		var result=t.renderInit();
+		var m=this.getMap(t);
+		m.node=result;
+		m.dependency=[];
+		return result;
+	},
+	//トップのノードを得る
+	getItem:function(){
+		var t=this.stacktop;
+		if(!t)throw new Error("empty stack");
+		var m=this.getMap(t);
+		var result;
+		if(!m.node){
+			result=this.newItem();
+		}else{
+			result=m.node;
+		}
+		return result;
 	},
 });
 

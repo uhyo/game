@@ -17,11 +17,14 @@ Card.prototype={
 	getRank:function(){
 		return this.ranks[this.rank];
 	},
+	//render系メソッド
+	renderInit:function(){
+		return document.createElement("div");
+	},
 	render:function(view){
-		var div=document.createElement("div");
+		var div=view.getItem();
 		div.textContent=this.getSuit()+this.getRank();
 		div.style.color=this.suitColors[this.suit];
-		return div;
 	},
 };
 //山札
@@ -33,13 +36,16 @@ function Hand(game,event,param){
 	t.cards=[];
 	//カードを追加
 	event.on("add",function(card){
-		view.child(t,card);
 		t.cards.push(card);
 	});
 }
 Hand.prototype={
+	//render系メソッド
+	renderInit:function(){
+		return document.createElement("div");
+	},
 	render:function(view){
-		var div=document.createElement("div");
+		var div=view.newItem();
 		var arr=t.cards;
 		for(var i=0,l=arr.length;i<l;i++){
 			div.appendChild(view.render(arr[i]));
@@ -52,8 +58,8 @@ game.init(Game.ClientDOMView,{
 });
 
 var h=game.add(Hand,{});
-h.emit("add",game.add(Card,{suit:2,rank:8}));
-h.emit("add",game.add(Card,{suit:0,rank:12}));
+h.event.emit("add",game.add(Card,{suit:2,rank:8}));
+h.event.emit("add",game.add(Card,{suit:0,rank:12}));
 
 //トップ連打リングに登録
 game.view.top(h);
