@@ -52,7 +52,29 @@ Hand.prototype={
 		}
 	},
 };
+//場
+function Field(game,event,param){
+	var t=this;
+	t.hands=[];
+	event.on("add",function(obj){
+		t.hands.push(obj);
+	});
+}
 
+Field.prototype={
+	//render系メソッド
+	renderTop:true,	//トップに描画されるオブジェクト
+	renderInit:function(){
+		return document.createElement("div");
+	},
+	render:function(view){
+		var div=view.newItem();
+		var arr=t.hands;
+		for(var i=0,l=arr.length;i<l;i++){
+			div.appendChild(view.render(arr[i]));
+		}
+	},
+};
 
 game.init(Game.ClientDOMView,{
 });
@@ -60,8 +82,7 @@ game.init(Game.ClientDOMView,{
 var h=game.add(Hand,{});
 h.event.emit("add",game.add(Card,{suit:2,rank:8}));
 h.event.emit("add",game.add(Card,{suit:0,rank:12}));
-
-//トップ連打リングに登録
-game.view.top(h);
+var f=game.add(Field,{});
+f.event.emit("add",h);
 
 game.start();

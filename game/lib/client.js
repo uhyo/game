@@ -91,7 +91,12 @@ Game.prototype.start=function(){
 };
 Game.prototype._old_add=Game.prototype.add;
 //クライアント側からは追加できない
-Game.prototype.add=function(){};
+Game.prototype.add=function(){
+	//ダミーを返す
+	return {
+		event:new EventEmitter,
+	};
+};
 //ユーザーに細工する
 Game.prototype.newUser=function(){
 	var user=new (this.defaultUser)();

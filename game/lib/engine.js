@@ -313,13 +313,21 @@ Game.ClientDOMView.prototype=Game.util.extend(Game.ClientView,{
 		this.stack=[];	//現在のオブジェクト
 		this.stacktop=null;
 	},
-	top:function(obj){
-		this.toprender=obj;
-		this.rerender();
+	//トップレンダリング
+	getTop:function(){
+		if(!this.toprender || !game.alive(this.toprender)){
+			//新しいのを探す
+			var arr=game.objects.filter(function(x){return x.renderTop});
+			if(arr.length===0){
+				throw new Error("no object whose renderTop ===true");
+			}
+			this.toprender=arr[0];
+		}
+		return this.toprender;
 	},
 	//走査して書き直す
 	rerender:function(){
-		this.render(this.toprender);
+		this.render(this.getTop());
 		//hard
 		while(document.body.hasChildNodes()){
 			document.body.removeChild(document.body.firstChild);
