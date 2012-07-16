@@ -17,9 +17,9 @@ Game.prototype.internal_init=function(){
 };
 Game.prototype.init=function(view,viewparam){
 	//It's dummy!
-	//this.view=new ServerView(this,view);
-	this.view=new view(this,viewparam);
-	this.view.server=true;
+	this.view=new ServerView(this,view);
+	/*this.view=new view(this,viewparam);
+	this.view.server=true;*/
 	this.view.init(viewparam);
 };
 Game.prototype.start=function(){

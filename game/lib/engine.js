@@ -78,6 +78,7 @@ Game.prototype={
 		//var user=new Game.User();
 		var user=this.newUser();
 		this.entry(user,{});
+		this.view.event.emit("gamestart");
 	},
 	//ユーザーが登録された
 	entry:function(user,opt){
@@ -249,11 +250,12 @@ Game.prototype={
 
 Game.View=function(game){
 	this.game=game;
-	this.server=false;	//サーバーサイドかどうか
+	this.event=new EventEmitter();
+	//this.server=false;	//サーバーサイドかどうか
 };
 Game.View.prototype={
 	init:function(param){
-		var ev=this.event=new EventEmitter();
+		var ev=this.event;
 		ev.on("loop",this.mainloop.bind(this));
 	},
 	mainloop:function(objects){
@@ -312,6 +314,10 @@ Game.ClientDOMView.prototype=Game.util.extend(Game.ClientView,{
 		}*/
 		this.stack=[];	//現在のオブジェクト
 		this.stacktop=null;
+		var ev=this.event, t=this;;
+		ev.on("gamestart",function(){
+			t.rerender();
+		});
 	},
 	//トップレンダリング
 	getTop:function(){
@@ -319,7 +325,7 @@ Game.ClientDOMView.prototype=Game.util.extend(Game.ClientView,{
 			//新しいのを探す
 			var arr=game.objects.filter(function(x){return x.renderTop});
 			if(arr.length===0){
-				throw new Error("no object whose renderTop ===true");
+				throw new Error("no object whose renderTop is true");
 			}
 			this.toprender=arr[0];
 		}
@@ -372,6 +378,7 @@ Game.ClientDOMView.prototype=Game.util.extend(Game.ClientView,{
 		obj.render(this);
 		//レンダリング終了
 		this._popStack();
+		return mm.node;
 	},
 	//トップのノードを作る
 	newItem:function(){

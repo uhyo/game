@@ -46,7 +46,7 @@ Hand.prototype={
 	},
 	render:function(view){
 		var div=view.newItem();
-		var arr=t.cards;
+		var arr=this.cards;
 		for(var i=0,l=arr.length;i<l;i++){
 			div.appendChild(view.render(arr[i]));
 		}
@@ -69,7 +69,7 @@ Field.prototype={
 	},
 	render:function(view){
 		var div=view.newItem();
-		var arr=t.hands;
+		var arr=this.hands;
 		for(var i=0,l=arr.length;i<l;i++){
 			div.appendChild(view.render(arr[i]));
 		}
@@ -85,4 +85,16 @@ h.event.emit("add",game.add(Card,{suit:0,rank:12}));
 var f=game.add(Field,{});
 f.event.emit("add",h);
 
+game.useUser(Game.KeyboardUser);
+game.event.on("entry",function(user,opt){
+	var e=user.event;
+	user.keyWait([37,38,39,40]);
+	e.on("keydown",function(ev){
+		h.event.emit("add",game.add(Card,{
+			suit:Math.floor(Math.random()*4),
+			rank:Math.floor(Math.random()*13+1),
+		}));
+		game.view.rerender();
+	});
+});
 game.start();
