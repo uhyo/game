@@ -94,7 +94,6 @@ game.event.on("entry",function(user,opt){
 			suit:Math.floor(Math.random()*4),
 			rank:Math.floor(Math.random()*13+1),
 		}));
-		game.view.rerender();
 	});
 });
 game.start();

@@ -146,6 +146,10 @@ Game.prototype={
 		this.transport.loop();
 	},
 	
+	//なんのEmitterを使うか
+	getObjectEmitter:function(){
+		return new Game.ObjectEmitter(this);
+	},
 	//objects return:internal object
 	add:function(constructor,param){
 		if(typeof constructor!=="function"){
@@ -153,11 +157,17 @@ Game.prototype={
 		}
 		
 		//通知イベント
-		var instance = new EventEmitter();
+		//var instance = new EventEmitter();
+		var instance = this.getObjectEmitter();
 		
 		var datastore=Game.util.clone(param);
+		var t=this;
 		
-		var d=new constructor(this,instance,datastore,this.view);
+		//var d=new constructor(this,instance,datastore,this.view);
+		var d = new (function(){
+			instance.obj=d;
+			constructor.call(this, t,instance,datastore,t.view);
+		})();
 		
 		//d.event = instance;
 		Object.defineProperty(d,"event",{
@@ -247,6 +257,21 @@ Game.prototype={
 		stopWithNoUser:true,
 	}
 };
+//オブジェクト用Emitter
+Game.ObjectEmitter=function(game,obj){
+	EventEmitter.apply(this,arguments);
+	this.game=game;
+	this.obj=null;	//対応するオブジェクトがある
+};
+Game.ObjectEmitter.prototype=Game.util.extend(EventEmitter,{
+	/*_emit:function(){
+		EventEmitter.prototype.emit.apply(this,arguments);
+	},*/
+	emit:function(){
+		EventEmitter.prototype.emit.apply(this,arguments);
+		this.game.view.event.emit("f5",this.obj);
+	},
+});
 
 Game.View=function(game){
 	this.game=game;
@@ -318,6 +343,12 @@ Game.ClientDOMView.prototype=Game.util.extend(Game.ClientView,{
 		ev.on("gamestart",function(){
 			t.rerender();
 		});
+		//更新された
+		ev.on("f5",function(obj){
+			var mm=t.getMap(obj);
+			mm.outdated=true;
+			t.rerender();
+		});
 	},
 	//トップレンダリング
 	getTop:function(){
@@ -325,7 +356,8 @@ Game.ClientDOMView.prototype=Game.util.extend(Game.ClientView,{
 			//新しいのを探す
 			var arr=game.objects.filter(function(x){return x.renderTop});
 			if(arr.length===0){
-				throw new Error("no object whose renderTop is true");
+				//throw new Error("no object whose renderTop is true");
+				return null;
 			}
 			this.toprender=arr[0];
 		}
@@ -333,7 +365,9 @@ Game.ClientDOMView.prototype=Game.util.extend(Game.ClientView,{
 	},
 	//走査して書き直す
 	rerender:function(){
-		this.render(this.getTop());
+		var t=this.getTop();
+		if(!t)return;
+		this.render(t);
 		//hard
 		while(document.body.hasChildNodes()){
 			document.body.removeChild(document.body.firstChild);
@@ -358,13 +392,28 @@ Game.ClientDOMView.prototype=Game.util.extend(Game.ClientView,{
 			m=this.nodeMap[obj._id]={
 				node:null,
 				dependency:[],
+				outdated:true,	//リレンダリングが必要
 			};
 		}
 		return m;
 	},
 
+	//そのオブジェクトが再描画必要か
+	isOutdated:function(obj){
+		var mm=this.getMap(obj);
+		if(mm.outdated)return true;
+		if(mm.dependency.length>0){
+			return mm.dependency.some(function(x){return this.isOutdated(x)},this);
+		}
+		return false;
+	},
 	//そのオブジェクト
 	render:function(obj){
+		var mm=this.getMap(obj);
+		if(!this.isOutdated(obj)){
+			return mm.node;
+		}
+
 		if(this.stacktop){
 			//そのオブジェクトに依存する
 			var m=this.getMap(this.stacktop);
@@ -373,10 +422,10 @@ Game.ClientDOMView.prototype=Game.util.extend(Game.ClientView,{
 		}
 		this._addStack(obj);
 		//レンダリングしてもらう
-		var mm=this.getMap(obj);
 		mm.dependency=[];	//依存関係初期化
 		obj.render(this);
 		//レンダリング終了
+		mm.outdated=false;
 		this._popStack();
 		return mm.node;
 	},
