@@ -147,8 +147,8 @@ Game.prototype={
 	},
 	
 	//なんのEmitterを使うか
-	getObjectEmitter:function(){
-		return new Game.ObjectEmitter(this);
+	getObjectEmitter:function(obj){
+		return new Game.ObjectEmitter(this,obj);
 	},
 	//objects return:internal object
 	add:function(constructor,param){
@@ -158,15 +158,19 @@ Game.prototype={
 		
 		//通知イベント
 		//var instance = new EventEmitter();
-		var instance = this.getObjectEmitter();
+		var instance;
 		
 		var datastore=Game.util.clone(param);
 		var t=this;
 		
 		//var d=new constructor(this,instance,datastore,this.view);
-		var d = new (function(){
-			instance.obj=d;
-			constructor.call(this, t,instance,datastore,t.view);
+		var d = (function(){
+			f.prototype=constructor.prototype;
+			return new f;
+			function f(){
+				instance = t.getObjectEmitter(this);
+				constructor.call(this, t,instance,datastore,t.view);
+			}
 		})();
 		
 		//d.event = instance;
@@ -261,7 +265,7 @@ Game.prototype={
 Game.ObjectEmitter=function(game,obj){
 	EventEmitter.apply(this,arguments);
 	this.game=game;
-	this.obj=null;	//対応するオブジェクトがある
+	this.obj=obj;	//対応するオブジェクトがある
 };
 Game.ObjectEmitter.prototype=Game.util.extend(EventEmitter,{
 	/*_emit:function(){
