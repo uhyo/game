@@ -58,6 +58,19 @@ Game.util={
 		}
 		return result;
 	},
+	//----------------
+	//配列をシャッフル
+	shuffleArray:function(arr){
+		var l=arr.length;
+		while(l){
+			var i=Math.floor(Math.random()*l);
+			var one=arr[--l];	//最後の
+			//入れ替え
+			arr[l]=arr[i];
+			arr[i]=one;
+		}
+		return arr;
+	},
 };
 
 
@@ -155,6 +168,7 @@ Game.prototype={
 		if(typeof constructor!=="function"){
 			throw new Error;
 		}
+		if(!param)param={};
 		
 		//通知イベント
 		//var instance = new EventEmitter();
@@ -456,6 +470,11 @@ Game.ClientDOMView.prototype=Game.util.extend(Game.ClientView,{
 		}
 		return result;
 	},
+	//そのノードかどうか
+	isOwner:function(obj,node){
+		var m=this.getMap(obj);
+		return m.node===node;
+	},
 });
 
 //User input
@@ -506,6 +525,21 @@ Game.KeyboardUser.prototype=Game.util.extend(Game.ClientUser,{
 	},
 	keyWait:function(arr){
 		this.waitingkey=arr;
+	},
+});
+//DOM操作のユーザー
+Game.DOMUser=function(){
+	Game.ClientUser.apply(this,arguments);
+};
+Game.DOMUser.prototype=Game.util.extend(Game.ClientUser,{
+	init:function(){
+		var ev=this.event;
+	},
+	addEventListener:function(name,func,capture){
+		if(!capture)capture=false;
+		if(this.internal){
+			document.addEventListener(name,func,capture);
+		}
 	},
 });
 
