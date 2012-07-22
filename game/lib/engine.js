@@ -125,6 +125,8 @@ Game.prototype={
 		
 		this.manager=new Game.LoopManager(this);
 		this.manager.start();
+		//オブジェクト削除部分上書き
+		this._eraceObject=this._loop_eraceObject;
 	},
 	//main loop
 	mainloop:function(){
@@ -209,9 +211,18 @@ Game.prototype={
 	initObject:function(d){
 		d._id=this.uniqueId();
 		d.event.on("die",function(){
-			d._flg_dying=true;	//dying flag
+			//d._flg_dying=true;	//dying flag
+			this._eraceObject(d);
 		}.bind(this));
 	},
+	_eraceObject:function(obj,i){
+		i = i==null ? this.objects.indexOf(obj) : i;
+		this.objects.splice(i,1);
+	},
+	_loop_eraceObject:function(obj,i){
+		obj._flg_dying=true;
+	},
+
 	
 	//for internal loop
 	filter:function(func){
@@ -345,7 +356,7 @@ Game.ClientCanvasView.prototype=Game.util.merge(new Game.ClientView,{
 Game.ClientDOMView=function(){
 	Game.ClientView.apply(this,arguments);
 	//body直下に描画するべきもの
-	this.toprender=null;
+	this.toprenders=[];
 };
 Game.ClientDOMView.prototype=Game.util.extend(Game.ClientView,{
 	init:function(param){
@@ -370,28 +381,23 @@ Game.ClientDOMView.prototype=Game.util.extend(Game.ClientView,{
 	},
 	//トップレンダリング
 	getTop:function(){
-		if(!this.toprender || !game.alive(this.toprender)){
-			//新しいのを探す
-			var arr=game.objects.filter(function(x){return x.renderTop});
-			if(arr.length===0){
-				//throw new Error("no object whose renderTop is true");
-				return null;
-			}
-			this.toprender=arr[0];
-		}
-		return this.toprender;
+		//新しいのを探す
+		var arr=game.objects.filter(function(x){return x.renderTop});
+		this.toprenders=arr;
+		return this.toprenders;
 	},
 	//走査して書き直す
 	rerender:function(){
 		var t=this.getTop();
-		if(!t)return;
-		this.render(t);
 		//hard
 		while(document.body.hasChildNodes()){
 			document.body.removeChild(document.body.firstChild);
 		}
-		var m=this.getMap(this.toprender);
-		document.body.appendChild(m.node);
+		t.forEach(function(o){
+			this.render(o);
+			var m=this.getMap(o);
+			document.body.appendChild(m.node);
+		},this);
 	},
 
 	//スタック関連
