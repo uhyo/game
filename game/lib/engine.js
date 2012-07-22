@@ -428,16 +428,16 @@ Game.ClientDOMView.prototype=Game.util.extend(Game.ClientView,{
 	//そのオブジェクト
 	render:function(obj){
 		var mm=this.getMap(obj);
-		if(!this.isOutdated(obj)){
-			return mm.node;
-		}
-
 		if(this.stacktop){
 			//そのオブジェクトに依存する
 			var m=this.getMap(this.stacktop);
 			//そのオブジェクトに依存している
 			m.dependency.push(obj);
 		}
+		if(!this.isOutdated(obj)){
+			return mm.node;
+		}
+
 		this._addStack(obj);
 		//レンダリングしてもらう
 		mm.dependency=[];	//依存関係初期化
@@ -470,8 +470,17 @@ Game.ClientDOMView.prototype=Game.util.extend(Game.ClientView,{
 		}
 		return result;
 	},
-	//そのノードかどうか
+	//そのノードを含むかどうか
 	isOwner:function(obj,node){
+		var m=this.getMap(obj);
+		if((node.compareDocumentPosition(m.node) & node.DOCUMENT_POSITION_CONTAINS)||(node===m.node)){
+			//m.nodeがnodeを含む場合
+			return true;
+		}
+		return false;
+	},
+	//そのノードかどうか
+	isOwnerExact:function(obj,node){
 		var m=this.getMap(obj);
 		return m.node===node;
 	},
