@@ -132,6 +132,7 @@ function Room(game,event,param){
 		t.cards.push(game.add(CardZone,{}));
 	}
 	event.on("addfield",function(field){
+		debugger;
 		if(t.fields.length<2){
 			//まだ入れる
 			t.fields.push(field);
@@ -172,7 +173,8 @@ Room.prototype={
 				result.push(game.add(Card,{suit:suit,rank:i}));
 			}
 		});
-		return game.add(Deck,{cards:Game.util.shuffleArray(result)});
+		//return game.add(Deck,{cards:Game.util.shuffleArray(result)});
+		return game.add(Deck,{cards:Game.util.shuffleArray(result).slice(0,6)});
 	},
 	//--- view用
 	getZoneindex:function(view,node){
@@ -236,14 +238,17 @@ function SpitBoard(game,event,param){
 				event.emit("die");
 			},wait/4);
 			//新しいの一枚を上に乗せる
+			var flag=false;	//変化があったか
 			room.fields.forEach(function(f,i){
 				if(f.deck.cards.length>0){
 					var zone=room.cards[i];
 					zone.event.emit("add",f.deck.last());
 					f.deck.event.emit("pop");
-					stopstop();
+					flag=true;
 				}
 			});
+			if(flag)stopstop();
+			else judge();
 		}
 		event.emit("count",t.index+1);
 	}
@@ -272,6 +277,9 @@ function stopstop(){
 		//もう動けない
 		game.add(SpitBoard,{});
 	}
+}
+//決着
+function judge(){
 }
 
 game.useUser(Game.DOMUser);

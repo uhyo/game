@@ -44,16 +44,16 @@ gaminginfo.on("new",function(game){
 			//イベントがきた
 			var o=game.objectsmap[obj._id];
 			if(!o)return;
-			o.event.emit.apply(o.event,[obj.name].concat(obj.args));
+			o.event.emit.apply(o.event,[obj.name].concat(executeJSON(obj.args)));
 		});
 		socket.on("gameevent",function(obj){
 			//イベントがきた
-			game.event._old_emit.apply(game.event,[obj.name].concat(obj.args));
+			game.event._old_emit.apply(game.event,[obj.name].concat(executeJSON(obj.args)));
 		});
 		socket.on("userevent",function(obj){
 			var u=game.objectsmap[obj._id];
 			if(!u)return;
-			u.event.emit.apply(u.event,[obj.name].concat(obj.args));
+			u.event.emit.apply(u.event,[obj.name].concat(executeJSON(obj.args)));
 		});
 		socket.on("env",function(arr){
 			for(var i=0,l=arr.length;i<l;i++){

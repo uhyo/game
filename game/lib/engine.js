@@ -297,6 +297,7 @@ Game.ObjectEmitter.prototype=Game.util.extend(EventEmitter,{
 		EventEmitter.prototype.emit.apply(this,arguments);
 	},*/
 	emit:function(){
+		if(arguments[0]==="newListener")return;
 		EventEmitter.prototype.emit.apply(this,arguments);
 		this.game.view.event.emit("f5",this.obj);
 	},
@@ -370,6 +371,9 @@ Game.ClientDOMView.prototype=Game.util.extend(Game.ClientView,{
 		this.stacktop=null;
 		var ev=this.event, t=this;;
 		ev.on("gamestart",function(){
+			t.rerender();
+		});
+		ev.on("rerender",function(){
 			t.rerender();
 		});
 		//更新された

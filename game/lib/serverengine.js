@@ -78,7 +78,9 @@ Game.prototype.broadcast=function(name,obj){
 	}
 */
 Game.prototype.jsonFilter=function(obj){
+	//console.log(obj);
 	if(typeof obj !=="object")return obj;
+	if(!obj)return obj;
 	var result={};
 	var t=this;
 	if(Array.isArray(obj)){
@@ -193,7 +195,7 @@ ServerTransporter.prototype={
 		this.broadcast("event",{
 			_id:obj._id,
 			name:name,
-			args:args,
+			args:this.game.jsonFilter(args),
 		});
 	},
 	gameevent:function(name,args){
