@@ -31,6 +31,10 @@ Game.prototype.newUser=function(option,event){
 	//var user=this._old_newUser();
 	var game=this;
 	var user=new (this.defaultUser)();
+	//ユーザーに対してIDを付加
+	Object.defineProperty(user,"_id",{
+		value:this.uniqueId()
+	});
 	//ここでサーバー用に（中身なし）
 	user.internal=false;
 	ServerUser.prototype.init.call(user,option);
@@ -65,6 +69,9 @@ Game.prototype.initObject=function(d){
 		}
 	};
 
+};
+Game.prototype.getObjectEmitter=function(obj){
+	return new EventEmitter();
 };
 //ソケットで発信
 Game.prototype.broadcast=function(name,obj){
@@ -192,6 +199,7 @@ ServerTransporter.prototype={
 		this.broadcast("die",obj._id);
 	},
 	event:function(obj,name,args){
+		if(name==="newListener")return;
 		this.broadcast("event",{
 			_id:obj._id,
 			name:name,

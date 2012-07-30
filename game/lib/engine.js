@@ -297,8 +297,10 @@ Game.ObjectEmitter.prototype=Game.util.extend(EventEmitter,{
 		EventEmitter.prototype.emit.apply(this,arguments);
 	},*/
 	emit:function(){
-		if(arguments[0]==="newListener")return;
 		EventEmitter.prototype.emit.apply(this,arguments);
+		if(arguments[0]==="newListener")return;
+		console.log("f5!!!",this.obj._constructor.name);
+		debugger;
 		this.game.view.event.emit("f5",this.obj);
 	},
 });
@@ -392,6 +394,7 @@ Game.ClientDOMView.prototype=Game.util.extend(Game.ClientView,{
 	},
 	//走査して書き直す
 	rerender:function(){
+		//console.log("rerender");
 		var t=this.getTop();
 		//hard
 		while(document.body.hasChildNodes()){
@@ -461,7 +464,7 @@ Game.ClientDOMView.prototype=Game.util.extend(Game.ClientView,{
 	newItem:function(){
 		var t=this.stacktop;
 		if(!t)throw new Error("empty stack");
-		var result=t.renderInit();
+		var result=t.renderInit(this);
 		var m=this.getMap(t);
 		m.node=result;
 		m.dependency=[];

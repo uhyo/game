@@ -6,6 +6,7 @@ socket.on("connect",function(){
 gaminginfo.on("new",function(game){
 	socket.on("init",function(obj){
 		var env=obj.env;
+		console.log("init!",obj);
 		game.user._id=obj.user_id;
 		game.objectsmap[obj.user_id]=game.user;
 		//現在の状況すべて
@@ -32,6 +33,8 @@ gaminginfo.on("new",function(game){
 			o._id=obj._id;
 			//入れる
 			game.objectsmap[o._id]=o;
+			//viewへ
+			game.view.event.emit("rerender");
 		});
 		socket.on("die",function(_id){
 			//オブジェクトを削除する
@@ -39,21 +42,25 @@ gaminginfo.on("new",function(game){
 			if(!game.objectsmap[_id])return;
 			game.objectsmap[_id]._flg_dying=true;
 			delete game.objectsmap[_id];
+			//viewへ
+			game.view.event.emit("rerender");
 		});
 		socket.on("event",function(obj){
 			//イベントがきた
 			var o=game.objectsmap[obj._id];
 			if(!o)return;
-			o.event.emit.apply(o.event,[obj.name].concat(executeJSON(obj.args)));
+			console.log("recp!!!",obj);
+			console.log(executeJSON(game,obj.args));
+			o.event.emit.apply(o.event,[obj.name].concat(executeJSON(game,obj.args)));
 		});
 		socket.on("gameevent",function(obj){
 			//イベントがきた
-			game.event._old_emit.apply(game.event,[obj.name].concat(executeJSON(obj.args)));
+			game.event._old_emit.apply(game.event,[obj.name].concat(executeJSON(game,obj.args)));
 		});
 		socket.on("userevent",function(obj){
 			var u=game.objectsmap[obj._id];
 			if(!u)return;
-			u.event.emit.apply(u.event,[obj.name].concat(executeJSON(obj.args)));
+			u.event.emit.apply(u.event,[obj.name].concat(executeJSON(game,obj.args)));
 		});
 		socket.on("env",function(arr){
 			for(var i=0,l=arr.length;i<l;i++){
@@ -127,6 +134,7 @@ ClientManager.prototype=Game.util.extend(Game.Manager,{
 function executeJSON(game,obj){
 	if(typeof obj!=="object" || !obj)return obj;
 	if(obj.$type=="user"){
+		console.log("user!!!",obj._id,game.user._id,game.user);
 		//ユーザーオブジェクト
 		//var user=game.newUser();
 		var user;

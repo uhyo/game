@@ -60,7 +60,7 @@ function Field(game,event,param){
 	var t=this;
 	t.hands=[];
 	t.deck=null;
-	t.user=param.user;
+	t.user=param.user;	//ユーザーをとっておく
 	event.on("add",function(obj){
 		t.hands.push(obj);
 	});
@@ -100,13 +100,20 @@ Field.prototype={
 function Deck(game,event,param){
 	var t=this;
 	t.cards=param.cards || [];
+	t.user=param.user;	//ユーザー情報を保存
 	event.on("pop",function(){
 		t.cards.pop();
 	});
 }
 Deck.prototype={
-	renderInit:function(){
-		return document.createElement("div");
+	renderInit:function(view){
+		var t=this;
+		var div=document.createElement("div");
+		//ドローされたときの情報
+		div.addEventListener("click",function(){
+			t.user.event.emit("draw");
+		},false);
+		return div;
 	},
 	render:function(view){
 		var div=view.getItem();
@@ -132,7 +139,6 @@ function Room(game,event,param){
 		t.cards.push(game.add(CardZone,{}));
 	}
 	event.on("addfield",function(field){
-		debugger;
 		if(t.fields.length<2){
 			//まだ入れる
 			t.fields.push(field);
@@ -174,7 +180,7 @@ Room.prototype={
 			}
 		});
 		//return game.add(Deck,{cards:Game.util.shuffleArray(result)});
-		return game.add(Deck,{cards:Game.util.shuffleArray(result).slice(0,6)});
+		return game.add(Deck,{user:field.user,cards:Game.util.shuffleArray(result).slice(0,6)});
 	},
 	//--- view用
 	getZoneindex:function(view,node){
@@ -299,13 +305,13 @@ game.event.on("entry",function(user,opt){
 	field.event.emit("setdeck",deck);
 	var view=game.view;
 	//入力を司る
-	user.addEventListener("click",function(e){
+	/*user.addEventListener("click",function(e){
 		var t=e.target;
 		if(view.isOwner(deck,t)){
 			//デッキからドロー
 			user.event.emit("draw");
 		}
-	},false);
+	},false);*/
 	user.addEventListener("dragstart",function(e){
 		var t=e.target;
 		if(view.isOwner(field,t)){
