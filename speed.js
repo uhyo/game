@@ -229,35 +229,11 @@ function SpitBoard(game,event,param){
 	var t=this;
 	this.strs=["いっ","せー","のー","で"];
 	t.index=0;
-	var wait=800;
 
 	event.on("count",function(c){
 		//カウント
 		t.index=c;
 	});
-	setTimeout(count,wait);
-	function count(){
-		if(t.index+1<t.strs.length){
-			setTimeout(count,wait);
-		}else{
-			setTimeout(function(){
-				event.emit("die");
-			},wait/4);
-			//新しいの一枚を上に乗せる
-			var flag=false;	//変化があったか
-			room.fields.forEach(function(f,i){
-				if(f.deck.cards.length>0){
-					var zone=room.cards[i];
-					zone.event.emit("add",f.deck.last());
-					f.deck.event.emit("pop");
-					flag=true;
-				}
-			});
-			if(flag)stopstop();
-			else judge();
-		}
-		event.emit("count",t.index+1);
-	}
 }
 SpitBoard.prototype={
 	renderTop:true,
@@ -270,6 +246,37 @@ SpitBoard.prototype={
 		var div=view.getItem();
 		div.textContent=this.strs.slice(0,this.index).join("");
 	},
+	//内部用
+	startcount:function(){
+		var t=this, event=this.event;
+		var wait=800;
+		setTimeout(count,wait);
+		function count(){
+			if(t.index+1<t.strs.length){
+				setTimeout(count,wait);
+			}else{
+				setTimeout(function(){
+					event.emit("die");
+				},wait/4);
+				t.newcard();
+			}
+			event.emit("count",t.index+1);
+		}
+	},
+	newcard:function(){
+		//新しいの一枚を上に乗せる
+		var flag=false;	//変化があったか
+		room.fields.forEach(function(f,i){
+			if(f.deck.cards.length>0){
+				var zone=room.cards[i];
+				zone.event.emit("add",f.deck.last());
+				f.deck.event.emit("pop");
+				flag=true;
+			}
+		});
+		if(flag)stopstop();
+		else judge();
+	},
 };
 
 game.init(Game.ClientDOMView,{
@@ -281,7 +288,8 @@ function stopstop(){
 		return !room.isFieldSustainable(f);
 	})){
 		//もう動けない
-		game.add(SpitBoard,{});
+		var board=game.add(SpitBoard,{});
+		board.startcount();
 	}
 }
 //決着

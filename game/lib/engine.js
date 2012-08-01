@@ -217,6 +217,7 @@ Game.prototype={
 	},
 	_eraceObject:function(obj,i){
 		i = i==null ? this.objects.indexOf(obj) : i;
+		this.transport.die(obj);
 		this.objects.splice(i,1);
 	},
 	_loop_eraceObject:function(obj,i){
@@ -299,10 +300,10 @@ Game.ObjectEmitter.prototype=Game.util.extend(EventEmitter,{
 	emit:function(){
 		EventEmitter.prototype.emit.apply(this,arguments);
 		if(arguments[0]==="newListener")return;
-		console.log("f5!!!",this.obj._constructor.name);
-		debugger;
 		this.game.view.event.emit("f5",this.obj);
 	},
+	//内部用on?
+	//internal:function(){this.on.apply(this,arguments)},
 });
 
 Game.View=function(game){

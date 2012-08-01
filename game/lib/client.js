@@ -6,7 +6,6 @@ socket.on("connect",function(){
 gaminginfo.on("new",function(game){
 	socket.on("init",function(obj){
 		var env=obj.env;
-		console.log("init!",obj);
 		game.user._id=obj.user_id;
 		game.objectsmap[obj.user_id]=game.user;
 		//現在の状況すべて
@@ -40,17 +39,16 @@ gaminginfo.on("new",function(game){
 			//オブジェクトを削除する
 			//console.log("dyyyyy!",_id,game.objectsmap[_id]);
 			if(!game.objectsmap[_id])return;
-			game.objectsmap[_id]._flg_dying=true;
+			game._eraceObject(game.objectsmap[_id]);
 			delete game.objectsmap[_id];
 			//viewへ
+			console.log("dead!",_id,game.objectsmap,game.objectsmap[_id]);
 			game.view.event.emit("rerender");
 		});
 		socket.on("event",function(obj){
 			//イベントがきた
 			var o=game.objectsmap[obj._id];
 			if(!o)return;
-			console.log("recp!!!",obj);
-			console.log(executeJSON(game,obj.args));
 			o.event.emit.apply(o.event,[obj.name].concat(executeJSON(game,obj.args)));
 		});
 		socket.on("gameevent",function(obj){
@@ -90,8 +88,20 @@ Game.prototype.start=function(){
 	//サーバーへユーザーを送る
 	var path=location.pathname.slice(1);
 	var opt=_g_routes[path];
+	//debugger;
 	this.user=this.newUser(opt);
 	this.user.init(opt);
+	//ユーザーに細工する
+	var old_emit=this.user.event.emit;
+	this.user.event.emit=function(name){
+		var args=Array.prototype.slice.call(arguments,1);
+		if(name==="newListener")return;
+		socket.emit("userevent",{
+			name:name,
+			args:args,
+		});
+		//old_emit.apply(user.event,arguments);
+	};
 	this.entry(this.user,opt);
 	socket.emit("entry",opt);
 	
@@ -107,15 +117,6 @@ Game.prototype.add=function(){
 //ユーザーに細工する
 Game.prototype.newUser=function(){
 	var user=new (this.defaultUser)();
-	var old_emit=user.event.emit;
-	user.event.emit=function(name){
-		var args=Array.prototype.slice.call(arguments,1);
-		socket.emit("userevent",{
-			name:name,
-			args:args,
-		});
-		//old_emit.apply(user.event,arguments);
-	};
 	return user;
 };
 Game.prototype.initObject=function(d){
@@ -134,7 +135,6 @@ ClientManager.prototype=Game.util.extend(Game.Manager,{
 function executeJSON(game,obj){
 	if(typeof obj!=="object" || !obj)return obj;
 	if(obj.$type=="user"){
-		console.log("user!!!",obj._id,game.user._id,game.user);
 		//ユーザーオブジェクト
 		//var user=game.newUser();
 		var user;
@@ -142,6 +142,7 @@ function executeJSON(game,obj){
 		if(obj._id==game.user._id){
 			//自分だ
 			user=game.user;
+			delete obj.properties.event;	//それはいらん
 		}else{
 			user=game.newUser();
 			user.internal=false;

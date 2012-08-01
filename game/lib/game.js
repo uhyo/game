@@ -137,7 +137,8 @@ exports.Server.prototype=Game.util.extend(ev.EventEmitter,{
 				//クライアント側で起きたイベント
 				socket.on("userevent",function(obj){
 					if(!obj || !obj.args)return;
-					event.emit.apply(event,[obj.name].concat(obj.args));
+					//_old_emit: serverengine.jsで定義
+					event._old_emit.apply(event,[obj.name].concat(obj.args));
 				});
 				//動く
 				if(game.loopController){
