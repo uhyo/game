@@ -21,6 +21,7 @@ function Game(){
 	//ユーザー
 	this.defaultUser=Game.User;
 	this._users=[];	//参加ユーザーの一覧
+	this.userfunc=null;	//ユーザー初期化時に呼び出す関数
 	//なんかのマネージャ
 	this.manager=new Game.Manager(this);
 	//できた
@@ -111,11 +112,13 @@ Game.prototype={
 		Object.defineProperty(user,"_id",{
 			value:this.uniqueId()
 		});
-		user.init(option);
+		user.init(this,option);
+		if(this.userfunc)this.userfunc(user);
 		return user;
 	},
-	useUser:function(userobj){
+	useUser:function(userobj,userfunc){
 		this.defaultUser=userobj;
+		this.userfunc=userfunc;
 	},
 	getTransporter:function(){
 		return new (this.transporter)(this,this.gaminginfo);
@@ -469,6 +472,8 @@ Game.ClientDOMView.prototype=Game.util.extend(Game.ClientView,{
 		var m=this.getMap(t);
 		m.node=result;
 		m.dependency=[];
+		//識別データ（ほんとはWeakMapでやりたい）
+		result.dataset._id=t._id;
 		return result;
 	},
 	//トップのノードを得る
@@ -505,9 +510,12 @@ Game.User=function(){
 	this.event=new EventEmitter();
 	this.internal=true;	//内部フラグ
 	this.alive=true;	//まだ生存しているかどうか
+	this.game=null;
 };
 Game.User.prototype={
-	init:function(){},
+	init:function(game){
+		this.game=game;
+	},
 };
 Game.DummyUser=function(){
 	this.event=new EventEmitter();
@@ -516,13 +524,14 @@ Game.ClientUser=function(){
 	Game.User.apply(this,arguments);
 };
 Game.ClientUser.prototype=Game.util.extend(Game.User,{
-	init:function(){},
 });
 Game.KeyboardUser=function(){
 	Game.ClientUser.apply(this,arguments);
 };
 Game.KeyboardUser.prototype=Game.util.extend(Game.ClientUser,{
 	init:function(){
+		Game.ClientUser.prototype.init.apply(this,arguments);
+
 		//var ev=this.event=new EventEmitter();
 		var ev=this.event;
 		
@@ -550,19 +559,47 @@ Game.KeyboardUser.prototype=Game.util.extend(Game.ClientUser,{
 		this.waitingkey=arr;
 	},
 });
-//DOM操作のユーザー
+//DOM操作のユーザー。DOMViewとセットで
 Game.DOMUser=function(){
 	Game.ClientUser.apply(this,arguments);
 };
 Game.DOMUser.prototype=Game.util.extend(Game.ClientUser,{
-	init:function(){
-		var ev=this.event;
-	},
 	addEventListener:function(name,func,capture){
 		if(!capture)capture=false;
 		if(this.internal){
 			document.addEventListener(name,func,capture);
 		}
+	},
+	//ドラッグを検知できる
+	ondrag:function(func){
+		var game=this.game;
+		//func(from_obj, to_obj);
+		if(!this.internal)return;
+		document.addEventListener("dragover",function(e){
+			e.preventDefault();
+		},false);
+		//開始
+		document.addEventListener("dragstart",function(e){
+			var t=e.target;
+			var obj=game.objectsmap[t.dataset._id];
+			if(!obj)return;
+			e.dataTransfer.items.add(t.dataset._id,"text/x-object_id");
+		},false);
+		document.addEventListener("drop",function(e){
+			var t=e.target;
+			var toobj=game.objectsmap[t.dataset._id];
+			if(!toobj)return;
+			//中身を見る
+			var d=e.dataTransfer.items[0];
+			if(!d)return;
+			if(d.type=="text/x-object_id"){
+				d.getAsString(function(obj_id){
+					var fromobj=game.objectsmap[obj_id];
+					if(!fromobj)return;
+					func(fromobj,toobj);
+				});
+			}
+		},false);
 	},
 });
 

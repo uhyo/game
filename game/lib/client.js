@@ -90,7 +90,8 @@ Game.prototype.start=function(){
 	var opt=_g_routes[path];
 	//debugger;
 	this.user=this.newUser(opt);
-	this.user.init(opt);
+	this.user.init(this,opt);
+	if(this.userfunc)this.userfunc(this.user);
 	//ユーザーに細工する
 	var old_emit=this.user.event.emit;
 	this.user.event.emit=function(name){
@@ -117,6 +118,7 @@ Game.prototype.add=function(){
 //ユーザーに細工する
 Game.prototype.newUser=function(){
 	var user=new (this.defaultUser)();
+	
 	return user;
 };
 Game.prototype.initObject=function(d){
@@ -147,7 +149,7 @@ function executeJSON(game,obj){
 			user=game.newUser();
 			user.internal=false;
 			user._id=obj._id;
-			user.init();
+			user.init(game);
 			game.objectsmap[obj._id]=user;
 		}
 		setProperties(user,executeJSON(game,obj.properties));

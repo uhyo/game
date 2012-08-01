@@ -296,7 +296,12 @@ function stopstop(){
 function judge(){
 }
 
-game.useUser(Game.DOMUser);
+game.useUser(Game.DOMUser,function(user){
+	//ドラッグ
+	user.ondrag(function(from,to){
+		//console.log("drag",from,to);
+	},false);
+});
 game.event.on("entry",function(user,opt){
 	/*var e=user.event;
 	user.keyWait([37,38,39,40]);
@@ -320,7 +325,7 @@ game.event.on("entry",function(user,opt){
 			user.event.emit("draw");
 		}
 	},false);*/
-	user.addEventListener("dragstart",function(e){
+	/*user.addEventListener("dragstart",function(e){
 		var t=e.target;
 		if(view.isOwner(field,t)){
 			//カードをドラッグ
@@ -328,9 +333,9 @@ game.event.on("entry",function(user,opt){
 			e.dataTransfer.items.add(t.dataset.handindex,"text/x-handindex");
 			//console.log(e.dataTransfer.items[0]);
 		}
-	},false);
+	},false);*/
 	//内部的な動作を作る
-	user.addEventListener("drop",function(e){
+	/*user.addEventListener("drop",function(e){
 		var t=e.target;
 		var zoneindex=room.getZoneindex(view,t);
 		if(zoneindex>=0){
@@ -343,7 +348,7 @@ game.event.on("entry",function(user,opt){
 				});
 			}
 		}
-	},false);
+	},false);*/
 	//ドロー
 	user.event.on("draw",function(){
 		//ドローした
