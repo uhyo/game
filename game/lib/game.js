@@ -138,7 +138,7 @@ exports.Server.prototype=Game.util.extend(ev.EventEmitter,{
 				socket.on("userevent",function(obj){
 					if(!obj || !obj.args)return;
 					//_old_emit: serverengine.jsで定義
-					event._old_emit.apply(event,[obj.name].concat(obj.args));
+					event._old_emit.apply(event,[obj.name].concat(expJSON(game,obj.args)));
 				});
 				//動く
 				if(game.loopController){
@@ -149,3 +149,13 @@ exports.Server.prototype=Game.util.extend(ev.EventEmitter,{
 
 	},
 });
+//usereventのマークアップを復元
+function expJSON(game,obj){
+	if(!obj)return obj;
+	if(obj.$type==="object"){
+		return game.objectsmap[obj._id];
+	}else if(Array.isArray(obj)){
+		return obj.map(function(x){return expJSON(game,x)});
+	}
+	return obj;
+}

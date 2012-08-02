@@ -136,7 +136,7 @@ function Room(game,event,param){
 	//フィールドに出ている
 	t.cards=[];
 	for(var i=0;i<2;i++){
-		t.cards.push(game.add(CardZone,{}));
+		t.cards.push(game.add(CardZone,{index:i}));
 	}
 	event.on("addfield",function(field){
 		if(t.fields.length<2){
@@ -203,6 +203,7 @@ Room.prototype={
 //カードを乗せる場所
 function CardZone(game,event,param){
 	var t=this;
+	t.index=param.index;	//roomの中の場所
 	t.card=game.add(Card,{rank:null,suit:null});	//最初は空
 	event.on("add",function(card){
 		t.card=card;
@@ -300,6 +301,10 @@ game.useUser(Game.DOMUser,function(user){
 	//ドラッグ
 	user.ondrag(function(from,to){
 		//console.log("drag",from,to);
+		if(from instanceof Card && to instanceof CardZone){
+			//カードを出した
+			user.event.emit("movehand",from,to);
+		}
 	},false);
 });
 game.event.on("entry",function(user,opt){
@@ -359,15 +364,23 @@ game.event.on("entry",function(user,opt){
 		}
 	});
 	//手札を移動
-	user.event.on("movehand",function(handindex,zoneindex){
-		//console.log(handindex,zoneindex);
-		var zone=room.cards[zoneindex];
-		var from=field.hands[handindex];
-		if(!zone || !from)return;
-		if(zone.card.isNext(from)){
+	user.event.on("movehand",function(card,zone){
+		console.log(card,zone);
+		if(!zone)return;
+		var h=field.hands;
+		//手札にあるかどうか調べる
+		var handindex;
+		for(var i=0;i<h.length;i++){
+			if(h[i]===card){
+				handindex=i;
+				break;
+			}
+		}
+		if(handindex==null)return;
+		if(zone.card.isNext(card)){
 			//カードを出す
 			field.event.emit("removehand",handindex);
-			zone.event.emit("add",from);
+			zone.event.emit("add",card);
 		}
 	});
 });

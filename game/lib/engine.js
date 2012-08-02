@@ -27,6 +27,8 @@ function Game(){
 	//できた
 	gaminginfo.emit("new",this);
 
+	//オブジェクトストア（本当はWeakMapがいい）
+	this.objectsmap={};
 
 	this.internal_init();
 }
@@ -112,6 +114,7 @@ Game.prototype={
 		Object.defineProperty(user,"_id",{
 			value:this.uniqueId()
 		});
+		this.objectsmap[user._id]=user;
 		user.init(this,option);
 		if(this.userfunc)this.userfunc(user);
 		return user;
@@ -206,6 +209,8 @@ Game.prototype={
 		});
 		
 		this.initObject(d);
+
+		if(d._id)this.objectsmap[d._id]=d;
 
 		this.objects.push(d);
 		this.transport.add(d);
@@ -587,7 +592,14 @@ Game.DOMUser.prototype=Game.util.extend(Game.ClientUser,{
 		},false);
 		document.addEventListener("drop",function(e){
 			var t=e.target;
-			var toobj=game.objectsmap[t.dataset._id];
+			//dropzoneを探す
+			var node=t;
+			while(node){
+				if(node.dropzone)break;
+				node=node.parentNode;
+			}
+			if(!node)return;
+			var toobj=game.objectsmap[node.dataset._id];
 			if(!toobj)return;
 			//中身を見る
 			var d=e.dataTransfer.items[0];

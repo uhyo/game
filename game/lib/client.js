@@ -42,7 +42,6 @@ gaminginfo.on("new",function(game){
 			game._eraceObject(game.objectsmap[_id]);
 			delete game.objectsmap[_id];
 			//viewへ
-			console.log("dead!",_id,game.objectsmap,game.objectsmap[_id]);
 			game.view.event.emit("rerender");
 		});
 		socket.on("event",function(obj){
@@ -77,8 +76,6 @@ gaminginfo.on("new",function(game){
 });
 //Game override for client
 Game.prototype.internal_init=function(){
-	//オブジェクトたち(_idをキーにしたやつ）
-	this.objectsmap={};
 	//無効
 	this.event._old_emit=this.event.emit;
 	this.event.emit=function(){};
@@ -99,7 +96,7 @@ Game.prototype.start=function(){
 		if(name==="newListener")return;
 		socket.emit("userevent",{
 			name:name,
-			args:args,
+			args:JSONFilter(args),
 		});
 		//old_emit.apply(user.event,arguments);
 	};
@@ -193,3 +190,16 @@ function setProperties(obj,map){
 	}
 }
 
+//簡易的にオブジェクト送信機構
+function JSONFilter(obj){
+	if("object"!==typeof obj || !obj){
+		return obj;
+	}
+	if(Array.isArray(obj)){
+		return obj.map(function(x){return JSONFilter(x)});
+	}else if(obj._constructor){
+		//special object!
+		return {$type:"object",_id:obj._id};
+	}
+	return obj;
+}
