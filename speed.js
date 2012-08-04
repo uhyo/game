@@ -32,13 +32,21 @@ Card.prototype={
 			/*while(div.hasChildNodes()){
 				div.removeChild(div.firstChid);
 			}*/
-			div.textContent="空";
+			//div.textContent="空";
+			div.textContent="　";
 			div.draggable=false;
 			delete div.dataset.suit;
 			delete div.dataset.rank;
 			return;
 		}
-		div.textContent=this.getSuit()+this.getRank();
+		var s=document.createElement("span");
+		s.classList.add("suit");
+		s.textContent=this.getSuit();
+		var r=document.createElement("span");
+		r.classList.add("rank");
+		r.textContent=this.getRank();
+		div.appendChild(s);
+		div.appendChild(r);
 		div.style.color=this.suitColors[this.suit];
 		div.dataset.suit=this.suit;
 		div.dataset.rank=this.rank;
@@ -79,15 +87,15 @@ Field.prototype={
 	},
 	render:function(view){
 		var div=view.newItem();
+		//山札
+		if(this.deck){
+			div.appendChild(view.render(this.deck));
+		}
 		var arr=this.hands;
 		for(var i=0,l=arr.length;i<l;i++){
 			var card=view.render(arr[i]);
 			card.dataset.handindex=i;
 			div.appendChild(card);
-		}
-		//山札
-		if(this.deck){
-			div.appendChild(view.render(this.deck));
 		}
 	},
 	//------
@@ -109,6 +117,7 @@ Deck.prototype={
 	renderInit:function(view){
 		var t=this;
 		var div=document.createElement("div");
+		div.classList.add("deck");
 		//ドローされたときの情報
 		div.addEventListener("click",function(){
 			t.user.event.emit("draw");
@@ -117,10 +126,9 @@ Deck.prototype={
 	},
 	render:function(view){
 		var div=view.getItem();
-		div.classList.add("deck");
-		div.textContent="山札";
+		div.textContent="　";
 		if(this.cards.length===0){
-			div.textContent="山空";
+			div.classList.add("empty");
 		}
 	},
 	//一番上
@@ -156,6 +164,7 @@ Room.prototype={
 			div.appendChild(view.render(this.fields[0]));
 		}
 		var d=document.createElement("div");
+		d.classList.add("zonewrapper");
 		this.cards.forEach(function(card,i){
 			var n=view.render(card);
 			n.dataset.zoneindex=i;
@@ -180,7 +189,7 @@ Room.prototype={
 			}
 		});
 		//return game.add(Deck,{cards:Game.util.shuffleArray(result)});
-		return game.add(Deck,{user:field.user,cards:Game.util.shuffleArray(result).slice(0,6)});
+		return game.add(Deck,{user:field.user,cards:Game.util.shuffleArray(result)/*.slice(0,6)*/});
 	},
 	//--- view用
 	getZoneindex:function(view,node){
@@ -213,6 +222,7 @@ CardZone.prototype={
 	renderInit:function(){
 		var div= document.createElement("div");
 		div.dropzone="move";
+		div.classList.add("cardzone");
 		div.addEventListener("dragover",function(e){
 			e.preventDefault();
 		},false);
@@ -300,7 +310,7 @@ function judge(){
 game.useUser(Game.DOMUser,function(user){
 	//ドラッグ
 	user.ondrag(function(from,to){
-		//console.log("drag",from,to);
+		console.log("drag",from,to);
 		if(from instanceof Card && to instanceof CardZone){
 			//カードを出した
 			user.event.emit("movehand",from,to);
@@ -365,7 +375,7 @@ game.event.on("entry",function(user,opt){
 	});
 	//手札を移動
 	user.event.on("movehand",function(card,zone){
-		console.log(card,zone);
+		//console.log(card,zone);
 		if(!zone)return;
 		var h=field.hands;
 		//手札にあるかどうか調べる

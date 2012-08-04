@@ -10,6 +10,7 @@ require('./serverengine.js');
 exports.Server=function(){
 	ev.EventEmitter.apply(this,arguments);
 	this.routeOptions={};
+	this.serves=[];
 }
 exports.Server.prototype=Game.util.extend(ev.EventEmitter,{
 	io:function(cb){
@@ -22,6 +23,10 @@ exports.Server.prototype=Game.util.extend(ev.EventEmitter,{
 		this.gamefile=path.join(path.dirname(require.main.filename),gamefile);
 		require(this.gamefile);
 
+	},
+	serve:function(type,filename){
+		//サーブするファイルを追加
+		this.serves.push({type:type,filename:path.join(path.dirname(require.main.filename),filename)});
 	},
 	route:function(name,func){
 		this.routeOptions[name]=func;
@@ -45,14 +50,21 @@ exports.Server.prototype=Game.util.extend(ev.EventEmitter,{
 				res.send(404);
 				return;
 			}
-			res.render('index',{scriptsdir:"/script",title:options.title,scripts:[
+			//CSSの番号
+			var csss=this.serves.filter(function(x){return x.type==="css"}).map(function(x,i){return i});
+			res.render('index',{
+				servedir:"/serve",
+				csss:csss,
+				scriptsdir:"/script",
+				title:options.title,
+				scripts:[
 					   "EventEmitter.min.js",
 					   "engine.js",
 					   "client.js",
 					   "route.js",
 					   "game.js"],
 			});
-		});
+		}.bind(this));
 		app.get('/script/:file',function(req,res,next){
 			var filename;
 			switch(req.params.file){
@@ -78,6 +90,14 @@ exports.Server.prototype=Game.util.extend(ev.EventEmitter,{
 			}
 			res.sendfile(path.resolve(__dirname,filename));
 
+		}.bind(this));
+		app.get('/serve/:file',function(req,res,next){
+			//console.log("?",__dirname,req.params.file);
+			if(isNaN(req.params.file)){
+				next();
+				return;
+			}
+			res.sendfile(path.resolve(__dirname,this.serves[req.params.file].filename));
 		}.bind(this));
 		app.listen(options.port || 80);
 		var io=socketio.listen(app);
