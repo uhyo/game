@@ -39,7 +39,7 @@ div.zonewrapper{
 	margin-left: 150px;
 }
 /* いっせーのーで */
-div.spitboard{
+div.spitboard,div.panel{
 	background-color: rgba(128,128,128,.5);
 	width:100%;
 	height:100%;

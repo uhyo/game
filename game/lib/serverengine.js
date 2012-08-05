@@ -147,7 +147,7 @@ Game.prototype.wholeEnvironment=function(){
 	console.log(result);
 	return result;*/
    return this.jsonFilter(this.objects.filter(function(x){
-	   return !x.private;
+	   return !x._private;
    }));
 };
 
@@ -187,9 +187,9 @@ ServerTransporter.prototype={
 			_id:obj._id,
 			param:this.game.jsonFilter(obj._param),
 		};
-		if(obj.private){
+		if(obj._private){
 			//ユーザープライベートなオブジェクトである
-			this.touser(obj.private,"add",o);
+			this.touser(obj._private,"add",o);
 		}else{
 			this.broadcast("add",o);
 		}

@@ -1202,7 +1202,7 @@ function LivePanel(game,event,param){
 	var e=user.event;
 
 	//ユーザープライベートなオブジェクト
-	this.private=user;
+	this._private=user;
 	e.on("disconnect",function(){
 		event.emit("die");
 	});
@@ -1223,7 +1223,7 @@ function EntryPanel(game,event,param){
 	var e=user.event;
 
 	//ユーザープライベートなオブジェクト
-	this.private=user;
+	this._private=user;
 	e.on("disconnect",function(){
 		event.emit("die");
 	});
