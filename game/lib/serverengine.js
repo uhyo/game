@@ -14,6 +14,8 @@ Game.prototype.internal_init=function(){
 		game.transporter=ServerLoopTransporter;
 		game.transport=game.getTransporter();
 	});
+	//ユーザーをとっておく
+	this.sessionUsers={};	//sessionidがキー
 };
 Game.prototype.init=function(view,viewparam){
 	//It's dummy!
@@ -37,7 +39,10 @@ Game.prototype.newUser=function(option,event){
 	});
 	//ここでサーバー用に（中身なし）
 	user.internal=false;
+	//サーバー用メソッドを搭載する
 	ServerUser.prototype.init.call(user,option);
+
+	//----------------
 	user.event=event;
 	event._old_emit=event.emit;
 	event.emit=function(name){
@@ -134,7 +139,7 @@ Game.prototype.propertiesJSON=function(obj){
 	return result;
 };
 //現在の状況を作る（JSON化される前提で）
-Game.prototype.wholeEnvironment=function(){
+Game.prototype.wholeEnvironment=function(user){
 	/*var result=[];
 	for(var i=0,os=this.objects,l=os.length;i<l;i++){
 		var obj=os[i];
@@ -146,11 +151,24 @@ Game.prototype.wholeEnvironment=function(){
 	//できた
 	console.log(result);
 	return result;*/
-   return this.jsonFilter(this.objects.filter(function(x){
-	   return !x._private;
-   }));
+	if(user){
+		return this.jsonFilter(this.objects.filter(function(x){
+			return !x._private || x._private===user;
+		}));
+	}else{
+		return this.jsonFilter(this.objects.filter(function(x){
+			return !x._private;
+		}));
+	}
 };
 
+//そのユーザーのセッションを保存
+Game.prototype.session=function(user){
+	this.sessionUsers[user._socket.id]=user;
+};
+Game.prototype.unsession=function(user){
+	delete this.sessionUsers[user._socket.id];
+};
 function ServerView(game,view){
 	Game.View.apply(this);
 	//viewの中身をからっぽにする

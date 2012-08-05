@@ -133,19 +133,37 @@ exports.Server.prototype=Game.util.extend(ev.EventEmitter,{
 					}
 
 				});
-				socket.on("entry",function(option){
+				socket.on("entry",function(sessionid,option){
 					// ユーザーを教えてあげる
 					//（サーバー側用ユーザーオブジェクト作成）
+					var stranger=true;	//新しい人か（entryする）
+					if(sessionid && game.sessionUsers[sessionid]){
+						//あのユーザーだ
+						user=game.sessionUsers[sessionid];
+						game.unsession(user);
+						delete event;
+						event=user.event;
+						stranger=false;
+					}else{
+						user=game.newUser(option,event);
+					}
 					//ここでユーザーに現在の状況を教える
-					var env=game.wholeEnvironment();
-					user=game.newUser(option,event);
+					var env=game.wholeEnvironment(user);
 					//ユーザーとソケットを結びつける
 					Object.defineProperty(user,"_socket",{
 						value:socket,
+						configurable:true,
 					});
+					if(!stranger){
+						//新しいソケットでセッション保存
+						game.session(user);
+					}
 					socket.on("initok",function(){
 						//game.event.emit("entry",user);
-						game.entry(user,option);
+						if(stranger){
+							//新しい人が来ました
+							game.entry(user,option);
+						}
 						game._users.push(user);
 						socket.removeAllListeners("initok");
 					});

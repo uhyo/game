@@ -1,7 +1,4 @@
 var socket=io.connect();
-socket.on("connect",function(){
-
-});
 //Game p
 gaminginfo.on("new",function(game){
 	socket.on("init",function(obj){
@@ -71,6 +68,7 @@ gaminginfo.on("new",function(game){
 			}
 		});
 		socket.emit("initok");
+		game.view.event.emit("rerender");
 	});
 
 });
@@ -85,6 +83,7 @@ Game.prototype.start=function(){
 	//サーバーへユーザーを送る
 	var path=location.pathname.slice(1);
 	var opt=_g_routes[path];
+	var game=this;
 	//debugger;
 	this.user=this.newUser(opt);
 	this.user.init(this,opt);
@@ -100,9 +99,21 @@ Game.prototype.start=function(){
 		});
 		//old_emit.apply(user.event,arguments);
 	};
-	this.entry(this.user,opt);
-	socket.emit("entry",opt);
-	
+	var sessionid = localStorage.sessionid || void 0;
+	//sessionidが発行されるまで待つ
+	if(socket.socket.sessionid){
+		connection();
+	}else{
+		socket.once("connect",function(){
+			connection();
+		});
+	}
+	function connection(){
+		game.entry(game.user,opt);
+		console.log(sessionid,"→",socket.socket.sessionid);
+		socket.emit("entry",sessionid,opt);
+		localStorage.sessionid=socket.socket.sessionid;	//新しいやつに変える
+	}
 };
 Game.prototype._old_add=Game.prototype.add;
 //クライアント側からは追加できない

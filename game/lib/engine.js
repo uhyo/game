@@ -288,6 +288,12 @@ Game.prototype={
 		};
 	},
 	//event
+	//ユーザーのセッションを保持させる
+	session:function(user){
+	},
+	//セッションを解除
+	unsession:function(user){
+	},
 	//------------------
 	defaultConfig:{
 		fps:30,

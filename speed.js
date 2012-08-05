@@ -203,7 +203,7 @@ Room.prototype={
 			}
 		});
 		//return game.add(Deck,{cards:Game.util.shuffleArray(result)});
-		return game.add(Deck,{user:field.user,cards:Game.util.shuffleArray(result)/*.slice(0,6)*/});
+		return game.add(Deck,{user:field.user,cards:Game.util.shuffleArray(result).slice(0,6)});
 	},
 	//--- view用
 	getZoneindex:function(view,node){
@@ -412,6 +412,7 @@ game.event.on("entry",function(user,opt){
 			rank:Math.floor(Math.random()*13+1),
 		}));
 	});*/
+	game.session(user);	//セッションを保持させる
 
 	//開始時は4枚ドローする
 	game.event.on("newplayer",function(number){
