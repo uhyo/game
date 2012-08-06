@@ -197,10 +197,28 @@ ServerUser.prototype=Game.util.extend(Game.User,{
 function ServerTransporter(game,gaminginfo){
 	this.game=game;
 	this.gaminginfo=gaminginfo;
+	//イベントをまとめる
+	this.store=[];
+	this.tick_tack_toe=false;	//イベントを送ったか
 }
 ServerTransporter.prototype={
-	broadcast:function(name,obj){
+	/*broadcast:function(name,obj){
 		this.gaminginfo.emit("broadcast",name,obj);
+	},*/
+	broadcast:function(name,obj){
+		this.store.push({
+			name:name,
+			obj:obj,
+		});
+		if(!this.tick_tack_toe){
+			//イベントを送らないといけない
+			var t=this;
+			process.nextTick(function(){
+				t.scatterEvent();
+				t.tick_tack_toe=false;
+			});
+			this.tick_tack_toe=true;
+		}
 	},
 	touser:function(user,name,obj){
 		if(!user._socket)return;
@@ -248,11 +266,20 @@ ServerTransporter.prototype={
 		});
 	},
 	loop:function(){},
+	//イベントを実際に送る
+	scatterEvent:function(){
+		//放出
+		var l;
+		if((l=this.store.length)>1){
+			this.gaminginfo.emit("broadcast","events",this.store);
+		}else if(l){
+			this.gaminginfo.emit("broadcast",this.store[0].name,this.store[0].obj);
+		}
+		this.store.length=0;
+	},
 };
 function ServerLoopTransporter(){
 	ServerTransporter.apply(this,arguments);
-	//LoopTransporterではイベントをまとめる
-	this.store=[];
 	this.count=this.wait=this.game.config.fps*this.game.config.adjust;	//5秒に1回かな・・・
 }
 ServerLoopTransporter.prototype=Game.util.extend(ServerTransporter,{
@@ -263,14 +290,7 @@ ServerLoopTransporter.prototype=Game.util.extend(ServerTransporter,{
 		});
 	},
 	loop:function(){
-		//放出
-		var l;
-		if((l=this.store.length)>1){
-			this.gaminginfo.emit("broadcast","events",this.store);
-		}else if(l){
-			this.gaminginfo.emit("broadcast",this.store[0].name,this.store[0].obj);
-		}
-		this.store.length=0;
+		this.scatterEvent();
 		if(--this.count===0){
 			//調整してあげる
 			this.gaminginfo.emit("volatile","env",this.game.wholeEnvironment());

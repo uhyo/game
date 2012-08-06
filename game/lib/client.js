@@ -2,6 +2,9 @@ var socket=io.connect();
 //Game p
 gaminginfo.on("new",function(game){
 	socket.on("init",function(obj){
+		//再描画フラグ
+		var redraw_flg=true;
+
 		var env=obj.env;
 		game.user._id=obj.user_id;
 		game.objectsmap[obj.user_id]=game.user;
@@ -15,22 +18,28 @@ gaminginfo.on("new",function(game){
 
 		//全部
 		socket.on("events",function(arr){
+			//console.log("events",arr.map(function(x){return x.name}));
+			redraw_flg=false;
 			for(var i=0,l=arr.length;i<l;i++){
 				socket.$emit(arr[i].name,arr[i].obj);
 			}
+			redraw_flg=true;
+			game.view.event.emit("rerender");
 		});
 		//メッセージを受け取りはじめる
 		socket.on("add",function(obj){
 			//新しいオブジェクトが追加された
 			//クライアント側に追加する
 			//console.log(window[obj.constructorName]);
-			console.log("add",obj.constructorName);
+			//console.log("add",obj.constructorName);
 			var o=game._old_add(window[obj.constructorName],executeJSON(game,obj.param));
 			o._id=obj._id;
 			//入れる
 			game.objectsmap[o._id]=o;
 			//viewへ
-			game.view.event.emit("rerender");
+			if(redraw_flg){
+				game.view.event.emit("rerender");
+			}
 		});
 		socket.on("die",function(_id){
 			//オブジェクトを削除する
@@ -39,11 +48,15 @@ gaminginfo.on("new",function(game){
 			game._eraceObject(game.objectsmap[_id]);
 			delete game.objectsmap[_id];
 			//viewへ
-			game.view.event.emit("rerender");
+			if(redraw_flg){
+				game.view.event.emit("rerender");
+			}
 		});
 		socket.on("clean",function(){
 			game.clean();
-			game.view.event.emit("rerender");
+			if(redraw_flg){
+				game.view.event.emit("rerender");
+			}
 		});
 		socket.on("event",function(obj){
 			//イベントがきた
