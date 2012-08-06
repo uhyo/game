@@ -163,8 +163,15 @@ Game.prototype.wholeEnvironment=function(user){
 };
 
 //そのユーザーのセッションを保存
-Game.prototype.session=function(user){
-	this.sessionUsers[user._socket.id]=user;
+Game.prototype.session=function(user,option){
+	if(!option)option={};
+	var sessionid=user._socket.id;
+	this.sessionUsers[sessionid]=user;
+	//いつ失効するか
+	var expire = isNaN(option.expire) ? 600 : option.expire-0;
+	setTimeout(function(){
+		delete this.sessionUsers[sessionid];
+	}.bind(this),expire);
 };
 Game.prototype.unsession=function(user){
 	delete this.sessionUsers[user._socket.id];
@@ -215,6 +222,9 @@ ServerTransporter.prototype={
 	die:function(obj){
 		//console.log("die!",obj._id,obj._constructor.name);
 		this.broadcast("die",obj._id);
+	},
+	clean:function(obj){
+		this.broadcast("clean");
 	},
 	event:function(obj,name,args){
 		if(name==="newListener")return;

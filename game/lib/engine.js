@@ -250,9 +250,12 @@ Game.prototype={
 	//全部削除（からっぽ）
 	clean:function(){
 		//this.objects.length=0;
-		for(var i=0,l=this.objects.length;i<l;i++){
-			this.objects[i]._flg_dying=true;
+		this.objectsmap={};
+		var arr=this.objects.concat([]);
+		for(var i=0,l=arr.length;i<l;i++){
+			this._eraceObject(arr[i]);
 		}
+		//this.transport.clean();
 	},
 	//そのオブジェクトがまだ存在しているかどうか
 	alive:function(obj){
@@ -289,7 +292,8 @@ Game.prototype={
 	},
 	//event
 	//ユーザーのセッションを保持させる
-	session:function(user){
+	//option: expire:[s] 有効期限
+	session:function(user,option){
 	},
 	//セッションを解除
 	unsession:function(user){
@@ -469,7 +473,12 @@ Game.ClientDOMView.prototype=Game.util.extend(Game.ClientView,{
 		this._addStack(obj);
 		//レンダリングしてもらう
 		mm.dependency=[];	//依存関係初期化
-		obj.render(this);
+		if(!obj.render){
+			//レンダリングできない
+			mm.node=document.createElement("span");
+		}else{
+			obj.render(this);
+		}
 		//レンダリング終了
 		mm.outdated=false;
 		this._popStack();
@@ -627,6 +636,7 @@ Game.Transporter=function(game,gaminginfo){
 Game.Transporter.prototype={
 	add:function(obj){},
 	die:function(obj){},
+	clean:function(){},
 	event:function(obj,name,args){},
 	gameevent:function(name,args){},
 	userevent:function(user,name,args){},

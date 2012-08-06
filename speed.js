@@ -347,9 +347,14 @@ game.init(Game.ClientDOMView,{
 });
 //設定
 game.playersNumber=2;
-var room=game.add(Room);
-//集まるのを待つパネル
-game.add(WaitingPanel);
+var room;
+function newgame(){
+	game.clean();
+	room=game.add(Room);
+	//集まるのを待つパネル
+	game.add(WaitingPanel);
+}
+newgame();
 
 //手詰まり判定
 function stopstop(){
@@ -391,6 +396,10 @@ function judge(){
 		}
 	}
 	game.event.emit("end");
+	//8秒後にニューゲーム
+	setTimeout(function(){
+		newgame();
+	},8000);
 }
 
 game.useUser(Game.DOMUser,function(user){
@@ -468,6 +477,10 @@ game.event.on("entry",function(user,opt){
 			field.event.emit("removehand",handindex);
 			zone.event.emit("add",card);
 		}
+	});
+	//終了したらもう知らない
+	game.event.once("end",function(){
+		game.unsession(user);
 	});
 });
 game.start();
