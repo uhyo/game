@@ -298,6 +298,10 @@ Game.prototype={
 	//セッションを解除
 	unsession:function(user){
 	},
+	//internalのみ実行
+	internal:function(callback){
+		callback();
+	},
 	//------------------
 	defaultConfig:{
 		fps:30,
@@ -484,6 +488,16 @@ Game.ClientDOMView.prototype=Game.util.extend(Game.ClientView,{
 		this._popStack();
 		return mm.node;
 	},
+	//描画しないけど依存している
+	depend:function(obj){
+		var mm=this.getMap(obj);
+		if(this.stacktop){
+			//そのオブジェクトに依存する
+			var m=this.getMap(this.stacktop);
+			//そのオブジェクトに依存している
+			m.dependency.push(obj);
+		}
+	},
 	//トップのノードを作る
 	newItem:function(){
 		var t=this.stacktop;
@@ -669,8 +683,6 @@ Game.LoopManager.prototype={
 		
 		this.stop_flg=true;
 		this.loopstart();
-		//this.loopController.start();
-		
 	},
 	newUser:function(user){
 		this.usercount++;

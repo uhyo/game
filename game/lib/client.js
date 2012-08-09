@@ -6,6 +6,7 @@ gaminginfo.on("new",function(game){
 		var redraw_flg=true;
 
 		var env=obj.env;
+		console.log(env);
 		game.user._id=obj.user_id;
 		game.objectsmap[obj.user_id]=game.user;
 		//現在の状況すべて
@@ -127,7 +128,7 @@ Game.prototype.start=function(){
 	}
 	function connection(){
 		game.entry(game.user,opt);
-		console.log(sessionid,"→",socket.socket.sessionid);
+		//console.log(sessionid,"→",socket.socket.sessionid);
 		socket.emit("entry",sessionid,opt);
 		localStorage.sessionid=socket.socket.sessionid;	//新しいやつに変える
 	}
@@ -150,6 +151,8 @@ Game.prototype.initObject=function(d){
 	//イベントを制限 die無効
 	d.event.removeAllListeners("internal");
 };
+//internalでないので実行しない
+Game.prototype.internal=function(){};
 
 /*function ClientManager(game){
 	Game.Manager.apply(this,arguments);
@@ -177,14 +180,16 @@ function executeJSON(game,obj){
 			user.init(game);
 			game.objectsmap[obj._id]=user;
 		}
+		console.log(obj._id,obj.properties);
+		delete obj.properties.internal;
 		setProperties(user,executeJSON(game,obj.properties));
 		return user;
 	}else if(obj.$type=="EventEmitter"){
 		return new EventEmitter;
 	}else if(obj.$type=="obj"){
 		//何か
-		var constructor=window[obj.constructorName];
-		if(!constructor)throw new Error(obj.constructorName);
+		//console.log(obj._id,obj.constructorName);
+		//debugger;
 		//既存のオブジェクトかどうかチェック
 		for(var i=0,l=game.objects.length;i<l;i++){
 			//既にある
@@ -192,11 +197,20 @@ function executeJSON(game,obj){
 				return game.objects[i];
 			}
 		}
-		var o=game._old_add(constructor,executeJSON(game,obj._param));
+		if(!obj.constructorName){
+			//存在しないオブジェクトが来た
+
+		}
+		var constructor=window[obj.constructorName];
+		if(!constructor)throw new Error(obj.constructorName);
+		if(!obj.properties)return null;
+		//var o=game._old_add(constructor,executeJSON(game,obj._param));
+		var o=game._old_add(constructor,{});
+		//先に入れる
+		o._id=obj._id;
+		game.objectsmap[obj._id]=o;
 		//現在のパラメータ反映
 		setProperties(o,obj.properties);
-		//入れる
-		game.objectsmap[o._id]=o;
 		return o;
 	}else if(Array.isArray(obj)){
 		return obj.map(function(x){return executeJSON(game,x)});

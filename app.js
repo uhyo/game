@@ -8,9 +8,9 @@ var server=new game.Server();
 server.route('',{});
 server.route('live',{live:true});
 */
-server.init("speed.js",{
+server.init("befunge.js",{
 	port:8080,
-	title:"speed",
+	title:"befunge ",
 });
-server.serve('css','speed.css');
+server.serve('css','befunge.css');
 server.route('',{});

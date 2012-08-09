@@ -134,6 +134,7 @@ exports.Server.prototype=Game.util.extend(ev.EventEmitter,{
 
 				});
 				socket.on("entry",function(sessionid,option){
+					//console.log(sessionid,game.sessionUsers);
 					// ユーザーを教えてあげる
 					//（サーバー側用ユーザーオブジェクト作成）
 					var stranger=true;	//新しい人か（entryする）

@@ -89,18 +89,22 @@ Game.prototype.broadcast=function(name,obj){
 	properties:{
 	}
 */
-Game.prototype.jsonFilter=function(obj){
+//flag: 詳細フラグ（2:完全 1:このオブジェクトのみ詳細 0:詳細なし)
+//objectmap: 既にオブジェクト化したものは除く(WeakMapがいいか?)
+Game.prototype.jsonFilter=function(obj,flag,objectmap){
+	if(!objectmap)objectmap={};
 	//console.log(obj);
+	//if(obj._constructor)console.log("filter!",obj._constructor.name);
 	if(typeof obj !=="object")return obj;
 	if(!obj)return obj;
 	var result={};
 	var t=this;
 	if(Array.isArray(obj)){
-		return obj.map(function(x){return t.jsonFilter(x)});
+		return obj.map(function(x){return t.jsonFilter(x,flag,objectmap)});
 	}else if(obj instanceof Game.User){
 		return {
 			$type:"user",
-			properties:this.propertiesJSON(obj),
+			properties:this.propertiesJSON(obj,0,objectmap),
 			_id:obj._id,
 		};
 	}else if(obj instanceof EventEmitter){
@@ -109,16 +113,29 @@ Game.prototype.jsonFilter=function(obj){
 		};
 	}else if(!obj._constructor){
 		//普通のオブジェクトだ
-		return this.propertiesJSON(obj);
+		return this.propertiesJSON(obj,0,objectmap);
 	}else{
 		// 特殊オブジェクトだ
-		return {
-			$type:"obj",
-			constructorName:obj._constructor.name,
-			properties:this.propertiesJSON(obj),
-			_param:this.propertiesJSON(obj._param || {}),
-			_id:obj._id,
-		};
+		if(objectmap[obj._id]){
+			//既にオブジェクト化した（無限再帰防止）
+			flag=0;
+		}
+		objectmap[obj._id]=true;
+		if(flag){
+			var mode= flag===2?2:0;
+			return {
+				$type:"obj",
+				constructorName:obj._constructor.name,
+				properties:this.propertiesJSON(obj,mode,objectmap),
+				//_param:this.propertiesJSON(obj._param || {},mode,objectmap),
+				_id:obj._id,
+			};
+		}else{
+			return {
+				$type:"obj",
+				_id:obj._id,
+			};
+		}
 	}
 	for(var key in obj){
 		var value=obj[key];
@@ -129,12 +146,12 @@ Game.prototype.jsonFilter=function(obj){
 	}
 	return result;
 };
-Game.prototype.propertiesJSON=function(obj){
+Game.prototype.propertiesJSON=function(obj,flag,objectmap){
 	var keys=Object.keys(obj);
 	var result={};
 	for(var i=0,l=keys.length;i<l;i++){
 		var k=keys[i];
-		result[k]=this.jsonFilter(obj[k]);
+		result[k]=this.jsonFilter(obj[k],flag,objectmap);
 	}
 	return result;
 };
@@ -154,11 +171,11 @@ Game.prototype.wholeEnvironment=function(user){
 	if(user){
 		return this.jsonFilter(this.objects.filter(function(x){
 			return !x._private || x._private===user;
-		}));
+		}),2);
 	}else{
 		return this.jsonFilter(this.objects.filter(function(x){
 			return !x._private;
-		}));
+		}),2);
 	}
 };
 
@@ -168,10 +185,12 @@ Game.prototype.session=function(user,option){
 	var sessionid=user._socket.id;
 	this.sessionUsers[sessionid]=user;
 	//いつ失効するか
-	var expire = isNaN(option.expire) ? 600 : option.expire-0;
+	var expire = isNaN(option.expire) ? 6000000 : option.expire-0;
 	setTimeout(function(){
 		delete this.sessionUsers[sessionid];
 	}.bind(this),expire);
+	//console.log("session!",sessionid);
+	//console.log(this.sessionUsers);
 };
 Game.prototype.unsession=function(user){
 	delete this.sessionUsers[user._socket.id];
@@ -228,7 +247,7 @@ ServerTransporter.prototype={
 		var o={
 			constructorName:obj._constructor.name,
 			_id:obj._id,
-			param:this.game.jsonFilter(obj._param),
+			param:this.game.jsonFilter(obj._param,true),
 		};
 		if(obj._private){
 			//ユーザープライベートなオブジェクトである
@@ -249,7 +268,7 @@ ServerTransporter.prototype={
 		this.broadcast("event",{
 			_id:obj._id,
 			name:name,
-			args:this.game.jsonFilter(args),
+			args:this.game.jsonFilter(args,false),
 		});
 	},
 	gameevent:function(name,args){
