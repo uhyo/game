@@ -37,6 +37,9 @@ gaminginfo.on("new",function(game){
 			o._id=obj._id;
 			//入れる
 			game.objectsmap[o._id]=o;
+			//なんとまだinitしていない
+			o._constructor.call(o,game,o.event,o._param,game.view);
+			if(o.init)o.init(game,o.event,o._param,game.view);
 			//viewへ
 			if(redraw_flg){
 				game.view.event.emit("rerender");
@@ -61,6 +64,7 @@ gaminginfo.on("new",function(game){
 		});
 		socket.on("event",function(obj){
 			//イベントがきた
+			console.log("event!",obj.name,obj);
 			var o=game.objectsmap[obj._id];
 			if(!o)return;
 			o.event.emit.apply(o.event,[obj.name].concat(executeJSON(game,obj.args)));
@@ -209,8 +213,12 @@ function executeJSON(game,obj){
 		//先に入れる
 		o._id=obj._id;
 		game.objectsmap[obj._id]=o;
+		//! 要整理!!
+		//なんとまだinitしていない
+		o._constructor.call(o,game,o.event,o._param,game.view);
 		//現在のパラメータ反映
 		setProperties(o,obj.properties);
+		if(o.init)o.init(game,o.event,o._param,game.view);
 		return o;
 	}else if(Array.isArray(obj)){
 		return obj.map(function(x){return executeJSON(game,x)});

@@ -186,14 +186,16 @@ Game.prototype={
 		var t=this;
 		
 		//var d=new constructor(this,instance,datastore,this.view);
-		var d = (function(){
+		/*var d = (function(){
 			f.prototype=constructor.prototype;
 			return new f;
 			function f(){
 				instance = t.getObjectEmitter(this);
 				constructor.call(this, t,instance,datastore,t.view);
 			}
-		})();
+		})();*/
+		var d=Object.create(constructor.prototype);
+		var instance=this.getObjectEmitter(d);
 		
 		//d.event = instance;
 		Object.defineProperty(d,"event",{
@@ -208,6 +210,7 @@ Game.prototype={
 			value:Game.util.clone(param),
 		});
 		
+		//constructor.call(d,this,instance,datastore,this.view);
 		this.initObject(d);
 
 		if(d._id)this.objectsmap[d._id]=d;
@@ -222,6 +225,10 @@ Game.prototype={
 			//d._flg_dying=true;	//dying flag
 			this._eraceObject(d);
 		}.bind(this));
+		//dはまだコンストラクタ関数を読んでいない（Object.createで作られた）
+		d._constructor.call(d,this,d.event,d._param,this.view);
+		//initしてあげる
+		if(d.init)d.init(this,d.event,d._param,this.view);
 	},
 	_eraceObject:function(obj,i){
 		i = i==null ? this.objects.indexOf(obj) : i;
