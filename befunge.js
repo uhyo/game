@@ -53,24 +53,78 @@ Field.prototype={
 			var color=cursor.getColor();
 			view.depend(cursor);
 			var span=spans[pos.y];
-			//前を切る
-			var text=span.firstChild;
-			//穴を埋める
+			var node=span.firstChild;
+			var pre_x=0;	//今までに数えた
+			while(true){
+				while(node.firstChild){
+					//テキストノードを求めて潜る
+					node=node.firstChild;
+				}
+				//テキストノードだし
+				var text=node;
+				if(text.nodeValue.length<= pos.x-pre_x){
+					//足りない
+					pre_x+=text.nodeValue.length;
+					if(node.nextSibling){
+						//次がある
+						node=node.nextSibling;
+						continue;
+					}else{
+						//もう無いので戻る
+						while(!node.nextSibling){
+							var node=node.parentNode;
+							if(node===span){
+								//戻りすぎた
+								node=null;
+								break;
+							}
+							if(!node)break;
+						}
+						if(node==null){
+							//結局なかった
+							break;
+						}
+						node=node.nextSibling;
+					}
+					continue;
+				}
+				//ここだ
+				//前を切る
+				var node2=text.splitText(pos.x-pre_x);
+				//カーソルがある部分を分離する
+				var node3=node2.splitText(1);
+				var cursor=document.createElement("span");
+				cursor.style.backgroundColor=color.back;
+				cursor.textContent=node3.previousSibling.textContent;
+				node3.parentNode.replaceChild(cursor,node3.previousSibling);
+				break;
+			}
+			if(node==null){
+				//無かった
+				//var t=span.textContent, len=t.length;
+				var newText="";
+				var len=0;
+				while(len<pos.x-pre_x){
+					newText+=" ";
+					len++;
+				}
+				//埋める
+				span.appendChild(document.createTextNode(newText));
+				//カーソルを描画
+				var cursor=document.createElement("span");
+				cursor.style.backgroundColor=color.back;
+				cursor.textContent=" ";
+				span.appendChild(cursor);
+			}
+			/*//穴を埋める
 			var t=text.nodeValue;
 			var len=t.length;
 			while(len<=pos.x){
 				t+=" ";
 				len++;
 			}
-			text.nodeValue=t;
+			text.nodeValue=t;*/
 
-			var node2=text.splitText(pos.x);
-			//カーソルがある部分を分離する
-			var node3=node2.splitText(1);
-			var cursor=document.createElement("span");
-			cursor.style.backgroundColor=color.back;
-			cursor.textContent=node3.previousSibling.textContent;
-			span.replaceChild(cursor,node3.previousSibling);
 		}
 	},
 
@@ -126,6 +180,10 @@ function Vector(game,event,param){
 	event.on("add",function(vector){
 		t.add(vector);
 	});
+	//減算する
+	event.on("subtract",function(vector){
+		t.subtract(vector);
+	});
 }
 Vector.prototype={
 	set:function(obj){
@@ -136,6 +194,11 @@ Vector.prototype={
 	add:function(vector){
 		this.x+=vector.x;
 		this.y+=vector.y;
+		this.adjust();
+	},
+	subtract:function(vector){
+		this.x-=vector.x;
+		this.y-=vector.y;
 		this.adjust();
 	},
 	adjust:function(){},
@@ -214,6 +277,12 @@ Cursor.prototype={
 							break;
 					}
 					ev.emit("move",obj);
+				}else if(c===8){
+					//BS
+					ev.emit("special","BackSpace");
+				}else if(c===46){
+					//Delete
+					ev.emit("special","Delete");
 				}
 				else{
 					//何もない
@@ -298,25 +367,26 @@ Cursor.prototype={
 			}
 			t.moveForward();
 		});
+		//その他のキー操作
+		user.event.on("special",function(mode){
+			switch(mode){
+				case "BackSpace":
+					//戻って削除
+					t.moveBack();
+					t.field.event.emit("input",t.position," ");
+					break;
+				case "Delete":
+					t.field.event.emit("input",t.position," ");
+					break;
+			}
+		});
 	},
 	moveForward:function(){
 		var p=this.position;
 		p.event.emit("add",this.velocity);
-		var adjust={}, adjust_flg=false;
-		if(p.x<0){
-			adjust.x=0, adjust_flg=true;
-		}else if(p.x>=this.field.width){
-			adjust.x=this.field.width-1, adjust_flg=true;
-		}
-		if(p.y<0){
-			adjust.y=0, adjust_flg=true;
-		}else if(p.y>=this.field.height){
-			adjust.y=this.field.height-1, adjust_flg=true;
-		}
-		//修正入る
-		if(adjust_flg){
-			p.event.emit("add",adjust);
-		}
+	},
+	moveBack:function(){
+		this.position.event.emit("subtract",this.velocity);
 	},
 };
 //プレイヤーの実行環境
