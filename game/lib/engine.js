@@ -425,6 +425,7 @@ Game.ClientDOMView.prototype=Game.util.extend(Game.ClientView,{
 	//走査して書き直す
 	rerender:function(){
 		//console.log("rerender");
+		//debugger;
 		var t=this.getTop();
 		//hard
 		while(document.body.hasChildNodes()){

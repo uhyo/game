@@ -14,7 +14,6 @@ Field.prototype={
 		});
 		//position:Vector ch:String
 		event.on("input",function(position,ch){
-			console.log("inp",position,ch);
 			var text=t.source[position.y] || "";
 			//文字を書き換える
 			var l=text.length;
@@ -185,7 +184,11 @@ Cursor.prototype={
 		var t=this;
 		var input=document.createElement("input");
 		input.type="text";
-		//input.style.display="none";
+		input.autofocus=true;
+		//どこかへ吹っ飛ばす
+		input.style.position="absolute";
+		input.style.left="0";
+		input.style.top="-500px";
 		//キーイベント
 		var user=this.user, ev=user.event;
 		if(user.internal){
@@ -221,7 +224,6 @@ Cursor.prototype={
 			//文字入力
 			input.addEventListener('input',function(e){
 				var v=input.value;
-				console.log(v);
 				if(v.length>0){
 					//入力された
 					var ch=v.charCodeAt(0);
@@ -233,16 +235,18 @@ Cursor.prototype={
 				}
 			},false);
 			input.addEventListener('blur',function(e){
-				input.focus();
+				e.preventDefault();
+				setTimeout(function(){
+					input.focus();
+					//input.setSelectionRange(0,0);	//先頭へ
+				},0);
 			},false);
 		}
 		return input;
 	},
 	render:function(view){
 		var input=view.getItem();
-		if(this.user.internal){
-			input.focus();
-		}
+		view.depend(this.position);
 	},
 	//描画用の色
 	colors:[
