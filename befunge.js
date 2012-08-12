@@ -14,6 +14,7 @@ Field.prototype={
 		});
 		//position:Vector ch:String
 		event.on("input",function(position,ch){
+			console.log("inp",position,ch);
 			var text=t.source[position.y] || "";
 			//文字を書き換える
 			var l=text.length;
@@ -178,9 +179,71 @@ Cursor.prototype={
 		//入力
 		this.catchInput();
 	},
-	//描画はFieldに任せるかな
-	render:function(){},
-	renderInit:function(){},
+	renderTop:true,
+	renderInit:function(){
+		//キー入力取得用
+		var t=this;
+		var input=document.createElement("input");
+		input.type="text";
+		//input.style.display="none";
+		//キーイベント
+		var user=this.user, ev=user.event;
+		if(user.internal){
+			//! 要整理
+			//キー操作
+			input.addEventListener('keydown',function(e){
+				var c=e.keyCode;
+				if(37<=c && c<=40){
+					//方向キーで移動
+					var obj={};
+					switch(c){
+						case 37:
+							obj.x=-1,obj.y=0;
+							break;
+						case 38:
+							obj.x=0,obj.y=-1;
+							break;
+						case 39:
+							obj.x=1,obj.y=0;
+							break;
+						case 40:
+							obj.x=0,obj.y=1;
+							break;
+					}
+					ev.emit("move",obj);
+				}
+				else{
+					//何もない
+					return;
+				}
+				e.preventDefault();
+			},false);
+			//文字入力
+			input.addEventListener('input',function(e){
+				var v=input.value;
+				console.log(v);
+				if(v.length>0){
+					//入力された
+					var ch=v.charCodeAt(0);
+					if(0x20<=ch && ch<=0x7e){
+						ev.emit("input",v.charAt(0));
+					}
+					input.value="";
+
+				}
+			},false);
+			input.addEventListener('blur',function(e){
+				input.focus();
+			},false);
+		}
+		return input;
+	},
+	render:function(view){
+		var input=view.getItem();
+		if(this.user.internal){
+			input.focus();
+		}
+	},
 	//描画用の色
 	colors:[
 		//1P色（赤）
@@ -270,35 +333,6 @@ game.init(Game.ClientDOMView);
 game.config.fps=10;
 game.playersNumber=2;
 game.useUser(Game.DOMUser,function(user){
-	//キー入力を受け取る
-	var ev=user.event;
-	user.addEventListener('keydown',function(e){
-		//早くkey,charが使えるようにならないかなあ
-		var c=e.keyCode;
-		var char;
-		if(37<=c && c<=40){
-			//方向キーで移動
-			var obj={};
-			switch(c){
-				case 37:
-					obj.x=-1,obj.y=0;
-					break;
-				case 38:
-					obj.x=0,obj.y=-1;
-					break;
-				case 39:
-					obj.x=1,obj.y=0;
-					break;
-				case 40:
-					obj.x=0,obj.y=1;
-					break;
-			}
-			ev.emit("move",obj);
-		}else if(char=getChar(e)){
-			//入力する
-			ev.emit("input",char);
-		}
-	});
 });
 game.internal(function(){
 	field=game.add(Field);
@@ -325,6 +359,7 @@ var getChar=(function(){
 	return getChar;
 	function getChar(e){
 		var ch=e.keyCode;
+		console.log("char!",ch,e.shiftKey);
 		if(0x41<=ch && ch<=0x5a){
 			//a～z
 			if(e.shiftKey){
