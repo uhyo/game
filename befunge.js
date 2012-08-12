@@ -12,6 +12,22 @@ Field.prototype={
 		event.on("addCursor",function(cursor){
 			t.cursors.push(cursor);
 		});
+		//position:Vector ch:String
+		event.on("input",function(position,ch){
+			var text=t.source[position.y] || "";
+			//文字を書き換える
+			var l=text.length;
+			var px=position.x;
+			//埋める
+			while(l<px){
+				text+=" ";
+				l++;
+			}
+			//書き換える
+			text= text.slice(0,px)+ch+text.slice(px+1);
+			//間が飛ぶかもしれないけど気にしない
+			t.source[position.y]=text;
+		});
 	},
 	renderTop:true,
 	renderInit:function(view){
@@ -186,11 +202,33 @@ Cursor.prototype={
 		var t=this;
 		//debugger;
 		user.event.on("move",function(obj){
-			//x,yを指定された
-			t.velocity.event.emit("set",{
-				x:obj.x,y:obj.y
-			});
+			if(obj.x!=null && obj.y!=null){
+				//x,yを指定された
+				t.velocity.event.emit("set",{
+					x:obj.x,y:obj.y
+				});
+			}
 			//動く
+			t.moveForward();
+		});
+		user.event.on("input",function(ch){
+			//Field->(depend on)->Cursor なので自動書き換えに期待
+			//文字を入力した
+			t.field.event.emit("input",t.position,ch);
+			var newvec=null;
+			//文字によって移動方向変更したりして
+			if(ch==="v"){
+				newvec={x:0,y:1};
+			}else if(ch==="<"){
+				newvec={x:-1,y:0};
+			}else if(ch===">"){
+				newvec={x:1,y:0};
+			}else if(ch==="^"){
+				newvec={x:0,y:-1};
+			}
+			if(newvec){
+				t.velocity.event.emit("set",newvec);
+			}
 			t.moveForward();
 		});
 	},
@@ -237,6 +275,7 @@ game.useUser(Game.DOMUser,function(user){
 	user.addEventListener('keydown',function(e){
 		//早くkey,charが使えるようにならないかなあ
 		var c=e.keyCode;
+		var char;
 		if(37<=c && c<=40){
 			//方向キーで移動
 			var obj={};
@@ -255,6 +294,9 @@ game.useUser(Game.DOMUser,function(user){
 					break;
 			}
 			ev.emit("move",obj);
+		}else if(char=getChar(e)){
+			//入力する
+			ev.emit("input",char);
 		}
 	});
 });
@@ -262,6 +304,51 @@ game.internal(function(){
 	field=game.add(Field);
 });
 
+//keydownのイベントオブジェクトからprintableキーを
+var getChar=(function(){
+	//[ normal, shift]
+	var specialKeys={
+		0xba:["*",":"],
+		0xbb:[";","+"],
+		0xbc:[",","<"],
+		0xbd:["-","="],
+		0xbe:[".",">"],
+		0xbf:["/","?"],
+		0xc0:["@","`"],
+		0xdb:["[","{"],
+		0xdc:["\\","|"],
+		0xdd:["]","}"],
+		0xde:["^","~"],
+		0xe2:["\\","_"],
+	};
+
+	return getChar;
+	function getChar(e){
+		var ch=e.keyCode;
+		if(0x41<=ch && ch<=0x5a){
+			//a～z
+			if(e.shiftKey){
+				//A～Z
+				return String.fromCharCode(ch);
+			}else{
+				//a～z
+				return String.fromCharCode(ch+0x20);
+			}
+		}else if(0x30<=ch && ch<=0x39){
+			//0～9
+			if(e.shiftKey){
+				//!～)
+				if(ch===0x30)return null;	//Shift+0
+				return String.fromCharCode(ch-0x10);
+			}else{
+				//0～9
+				return String.fromCharCode(ch);
+			}
+		}else if(specialKeys[ch]){
+			return specialKeys[ch][e.shiftKey ? 1 : 0];
+		}
+	}
+})();
 game.event.on("entry",function(user){
 	game.session(user);
 	var cursor=field.setupCursor(user);
