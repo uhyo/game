@@ -64,7 +64,7 @@ gaminginfo.on("new",function(game){
 		});
 		socket.on("event",function(obj){
 			//イベントがきた
-			console.log("event!",obj.name,obj);
+			//console.log("event!",obj.name,obj);
 			var o=game.objectsmap[obj._id];
 			if(!o)return;
 			o.event.emit.apply(o.event,[obj.name].concat(executeJSON(game,obj.args)));

@@ -4,6 +4,7 @@ function Field(game,event,param){
 	this.source=[">v","^<"];	//ソースコード（y座標を配列で表現）
 	
 	this.cursors=[];	//登録されている
+	this.ips=[];	//実行中のIP
 }
 Field.prototype={
 	init:function(game,event){
@@ -11,6 +12,9 @@ Field.prototype={
 		//カーソルが追加された
 		event.on("addCursor",function(cursor){
 			t.cursors.push(cursor);
+		});
+		event.on("addIP",function(ip){
+			t.ips.push(ip);
 		});
 		//position:Vector ch:String
 		event.on("input",function(position,ch){
@@ -42,6 +46,7 @@ Field.prototype={
 		return pre;
 	},
 	render:function(view){
+		var t=this;
 		var pre=view.getItem();
 		var spans=pre.getElementsByClassName("line");
 		for(var y=0;y<this.height;y++){
@@ -49,12 +54,22 @@ Field.prototype={
 		}
 		//カーソルを描画する
 		for(var i=0,l=this.cursors.length;i<l;i++){
-			var cursor=this.cursors[i], pos=cursor.position;
-			var color=cursor.getColor();
+			renderCursor(this.cursors[i],false);
+		}
+		//IPも描画する
+		for(i=0,l=this.ips.length;i<l;i++){
+			renderCursor(this.ips[i],true);
+		}
+		//Cursorを描画できる ipflg:IPかどうか
+		function renderCursor(cursor,ipflg){
+			var pos=cursor.position;
+			var color=t.colors[cursor.number];
 			view.depend(cursor);
 			var span=spans[pos.y];
 			var node=span.firstChild;
 			var pre_x=0;	//今までに数えた
+			//背景色を決める
+			var cursorBack = ipflg ? color.ipBack : color.back;
 			while(true){
 				while(node.firstChild){
 					//テキストノードを求めて潜る
@@ -94,7 +109,8 @@ Field.prototype={
 				//カーソルがある部分を分離する
 				var node3=node2.splitText(1);
 				var cursor=document.createElement("span");
-				cursor.style.backgroundColor=color.back;
+				//色が違う
+				cursor.style.backgroundColor=cursorBack;
 				cursor.textContent=node3.previousSibling.textContent;
 				node3.parentNode.replaceChild(cursor,node3.previousSibling);
 				break;
@@ -112,24 +128,30 @@ Field.prototype={
 				span.appendChild(document.createTextNode(newText));
 				//カーソルを描画
 				var cursor=document.createElement("span");
-				cursor.style.backgroundColor=color.back;
+				cursor.style.backgroundColor=cursorBack;
 				cursor.textContent=" ";
 				span.appendChild(cursor);
 			}
-			/*//穴を埋める
-			var t=text.nodeValue;
-			var len=t.length;
-			while(len<=pos.x){
-				t+=" ";
-				len++;
-			}
-			text.nodeValue=t;*/
-
 		}
 	},
 
 	width: 80,
 	height:25,
+	//描画用の色
+	colors:[
+		//1P色（赤）
+		{
+			back:"#ffcccc",	//背景
+			color:"#ff0000",//文字
+			ipBack:"#ff9999",	//IPの背景
+		},
+			//2P色（青）
+		{
+			back:"#ccccff",
+			color:"#0000ff",
+			ipBack:"#9999ff",
+		},
+	],
 	//---内部用
 	//新しいCursorを作る
 	setupCursor:function(user){
@@ -162,10 +184,37 @@ Field.prototype={
 			user:user,
 			position:pos,
 			velocity:v,
-			stack:game.add(Stack),
 		});
 		return cursor;
 	},
+	//カーソル起動
+	runCursor:function(cursor){
+		if(this.ips.some(function(x){
+			return x.number===cursor.number;
+		})){
+			//すでにある
+			return;
+		}
+		var pos=game.add(LimitedVector,cursor.position);
+		var v=game.add(Vector,cursor.velocity);
+		var ip=game.add(IP,{
+			number:cursor.number,
+			field:this,
+			user:cursor.user,
+			position:pos,
+			velocity:v,
+			stack:game.add(Stack),
+		});
+		this.event.emit("addIP",ip);
+		ip.run();
+		return ip;
+
+	},
+	//命令を読む
+	getInstruction:function(x,y){
+		if(!this.source[y])return " ";
+		return this.source[y][x] || " ";
+	}
 }
 //ベクトル
 function Vector(game,event,param){
@@ -184,6 +233,10 @@ function Vector(game,event,param){
 	event.on("subtract",function(vector){
 		t.subtract(vector);
 	});
+	//掛け算する
+	event.on("multiply",function(number){
+		t.multiply(number);
+	});
 }
 Vector.prototype={
 	set:function(obj){
@@ -199,6 +252,11 @@ Vector.prototype={
 	subtract:function(vector){
 		this.x-=vector.x;
 		this.y-=vector.y;
+		this.adjust();
+	},
+	multiply:function(number){
+		this.x*=number;
+		this.y*=number;
 		this.adjust();
 	},
 	adjust:function(){},
@@ -283,8 +341,10 @@ Cursor.prototype={
 				}else if(c===46){
 					//Delete
 					ev.emit("special","Delete");
-				}
-				else{
+				}else if(c===116){
+					//F5
+					ev.emit("special","Run");
+				}else{
 					//何もない
 					return;
 				}
@@ -317,20 +377,6 @@ Cursor.prototype={
 		var input=view.getItem();
 		view.depend(this.position);
 	},
-	//描画用の色
-	colors:[
-		//1P色（赤）
-		{
-			back:"#ffcccc",	//背景
-			color:"#ff0000",//文字
-		},
-			//2P色（青）
-		{
-			back:"#ccccff",
-			color:"#0000ff",
-		},
-	],
-	getColor:function(){return this.colors[this.number]},
 	//ユーザー入力を受け付ける
 	catchInput:function(){
 		//ユーザーのキー入力で動く
@@ -378,6 +424,9 @@ Cursor.prototype={
 				case "Delete":
 					t.field.event.emit("input",t.position," ");
 					break;
+				case "Run":
+					t.field.runCursor(t);
+					break;
 			}
 		});
 	},
@@ -396,9 +445,69 @@ function IP(game,event,param){
 	this.stack=param.stack || null;	//Stack
 }
 IP.prototype=Game.util.extend(Cursor,{
+	renderTop:false,
+	catchInput:function(){
+	},
+	clockInterval:200,	//[ms/回] プログラムカウンタ動作
+	//発進!!
+	run:function(){
+		var t=this;
+		tick();
+
+		function tick(){
+			t.tick();
+			setTimeout(tick,t.clockInterval);
+		}
+	},
+	tick:function(){
+		//実行する
+		var ch=this.field.getInstruction(this.position.x,this.position.y);
+		//console.log(ch);
+		//Direction Changing命令
+		if(ch==="?"){
+			//Go Away
+			var rnd=Math.floor(Math.random()*4);
+			ch=["><^v"][rnd];
+		}
+		if(ch===">"){
+			//Go East
+			this.velocity.event.emit("set",{x:1,y:0});
+		}else if(ch==="<"){
+			//Go West
+			this.velocity.event.emit("set",{x:-1,y:0});
+		}else if(ch==="^"){
+			//Go North
+			this.velocity.event.emit("set",{x:0,y:-1});
+		}else if(ch==="v"){
+			//Go South
+			this.velocity.event.emit("set",{x:0,y:1});
+		}else if(ch==="]"){
+			//Turn Right
+			this.velocity.event.emit("set",{x:-this.velocity.y, y:this.velocity.x});
+		}else if(ch==="["){
+			//Turn Left
+			this.velocity.event.emit("set",{x:this.velocity.y, y:-this.velocity.x});
+		}else if(ch==="r" || ("A"<=ch && ch<="Z")){
+			//Reverse
+			this.velocity.event.emit("multiply",-1);
+		}else if(ch==="x"){
+			//Absolute Vector
+		}
+		//移動する
+		this.position.event.emit("add",this.velocity);
+	},
 });
 function Stack(game,event,param){
 	this.stack=[];
+}
+Stack.prototype={
+	renderInit:function(){
+		var div=document.createElement("div");
+		return div;
+	},
+	renderTop:function(view){
+		var div=view.getItem();
+	},
 }
 
 //ゲーム初期化
