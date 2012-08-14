@@ -559,8 +559,8 @@ IP.prototype=Game.util.extend(Cursor,{
 					//Multiply
 					st.push(st.pop()*st.pop());
 				}else if(ch==="-"){
-					//Substract
-					su.push(-st.pop()+st.pop());
+					//Subtract
+					st.push(-st.pop()+st.pop());
 				}else if(ch==="/"){
 					//Divide
 					var right=st.pop(),left=st.pop();
@@ -699,7 +699,44 @@ IP.prototype=Game.util.extend(Cursor,{
 					//この場所を繰り返す
 					times=num+1;	//最初に減るので1個余計
 					continue;
+				}//Decision Making
+				else if(ch==="!"){
+					//Logical Not
+					var val=st.pop();
+					st.push(val===0 ? 1 : 0);
+				}else if(ch==="`"){
+					//Greater Than
+					var f=st.pop(), s=st.pop();
+					st.push(s>f ? 1 :0);
+				}else if(ch==="_"){
+					//East-West If
+					var val=st.pop();
+					if(val===0){
+						this.velocity.event.emit("set",{x:1,y:0});
+					}else{
+						this.velocity.event.emit("set",{x:-1,y:0});
+					}
+				}else if(ch==="|"){
+					//North-South If
+					var val=st.pop();
+					if(val===0){
+						this.velocity.event.emit("set",{x:0,y:1});
+					}else{
+						this.velocity.event.emit("set",{x:0,y:-1});
+					}
+				}else if(ch==="w"){
+					//Compare
+					var b=st.pop(), a=st.pop();
+					if(a<b){
+						//左へ
+						this.velocity.event.emit("set",{x:this.velocity.y, y:-this.velocity.x});
+					}else if(a>b){
+						//右へ
+						this.velocity.event.emit("set",{x:-this.velocity.y, y:this.velocity.x});
+					}//同じならまっすぐ
+
 				}
+
 
 			}
 
