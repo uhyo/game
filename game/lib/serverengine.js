@@ -62,7 +62,6 @@ Game.prototype.add=function(constructor,param){
 Game.prototype._old_initObject=Game.prototype.initObject;
 Game.prototype.initObject=function(d){
 	//ユニークIDをあげる
-	this._old_initObject(d);
 	var ev=d.event;
 	var game=this;
 	ev._old_emit=ev.emit;
@@ -73,7 +72,7 @@ Game.prototype.initObject=function(d){
 			game.transport.event(d,name,args);
 		}
 	};
-
+	this._old_initObject(d);
 };
 Game.prototype.getObjectEmitter=function(obj){
 	return new EventEmitter();

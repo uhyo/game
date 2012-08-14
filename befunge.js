@@ -35,6 +35,7 @@ Field.prototype={
 	},
 	renderTop:true,
 	renderInit:function(view){
+		var div=document.createElement("div");
 		var pre=document.createElement("pre");
 		pre.classList.add("field");
 		for(var y=0;y<this.height;y++){
@@ -43,11 +44,16 @@ Field.prototype={
 			pre.appendChild(span);
 			pre.appendChild(document.createTextNode("\n"));
 		}
-		return pre;
+		div.appendChild(pre);
+		var info=document.createElement("div2");
+		info.classList.add("info");
+		div.appendChild(info);
+		return div;
 	},
 	render:function(view){
 		var t=this;
-		var pre=view.getItem();
+		var div=view.getItem();
+		var pre=div.getElementsByTagName("pre")[0];
 		var spans=pre.getElementsByClassName("line");
 		for(var y=0;y<this.height;y++){
 			spans[y].textContent=this.source[y] || " ";
@@ -59,6 +65,12 @@ Field.prototype={
 		//IPも描画する
 		for(i=0,l=this.ips.length;i<l;i++){
 			renderCursor(this.ips[i],true);
+		}
+		//IPの情報を描画する
+		var info=div.getElementsByClassName("info")[0];
+		while(info.hasChildNodes())info.removeChild(info.firstChild);
+		for(i=0,l=this.ips.length;i<l;i++){
+			info.appendChild(view.render(this.ips[i]));
 		}
 		//Cursorを描画できる ipflg:IPかどうか
 		function renderCursor(cursor,ipflg){
@@ -443,9 +455,30 @@ function IP(game,event,param){
 	Cursor.apply(this,arguments);
 	var t=this;
 	this.stack=param.stack || null;	//Stack
+	this.stringmode=false;
 }
 IP.prototype=Game.util.extend(Cursor,{
+	init:function(game,event,param){
+		var t=this;
+		Cursor.prototype.init.apply(this,arguments);
+		event.on("stringmode",function(mode){
+			t.stringmode=mode;
+		});
+	},
 	renderTop:false,
+	//Fieldの配下で描画される
+	renderInit:function(){
+		var div=document.createElement("div");
+		div.classList.add("ipInfo");
+		div.backgroundColor=this.field.colors[this.number].back;
+		return div;
+	},
+	render:function(view){
+		var div=view.getItem();
+		while(div.hasChildNodes())div.removeChild(div.firstChild);
+		//スタック情報とoutput情報
+		div.appendChild(view.render(this.stack));
+	},
 	catchInput:function(){
 	},
 	clockInterval:200,	//[ms/回] プログラムカウンタ動作
@@ -461,52 +494,286 @@ IP.prototype=Game.util.extend(Cursor,{
 	},
 	tick:function(){
 		//実行する
+		var t=this;
 		var ch=this.field.getInstruction(this.position.x,this.position.y);
-		//console.log(ch);
-		//Direction Changing命令
-		if(ch==="?"){
-			//Go Away
-			var rnd=Math.floor(Math.random()*4);
-			ch=["><^v"][rnd];
+		var st=this.stack;
+		//console.log(ch,this.stringmode);
+		if(this.stringmode){
+			//stringmodeだ
+			if(ch===" " && st.last()===32){
+				//SGML-style
+			}else if(ch==='"'){
+				//Toggle Stringmode
+				this.event.emit("stringmode",false);
+			}else{
+				st.push(ch.charCodeAt(0));
+			}
+		}else{
+			//Direction Changing命令
+			if(ch==="?"){
+				//Go Away
+				var rnd=Math.floor(Math.random()*4);
+				ch=["><^v"][rnd];
+			}
+			if(ch===">"){
+				//Go East
+				this.velocity.event.emit("set",{x:1,y:0});
+			}else if(ch==="<"){
+				//Go West
+				this.velocity.event.emit("set",{x:-1,y:0});
+			}else if(ch==="^"){
+				//Go North
+				this.velocity.event.emit("set",{x:0,y:-1});
+			}else if(ch==="v"){
+				//Go South
+				this.velocity.event.emit("set",{x:0,y:1});
+			}else if(ch==="]"){
+				//Turn Right
+				this.velocity.event.emit("set",{x:-this.velocity.y, y:this.velocity.x});
+			}else if(ch==="["){
+				//Turn Left
+					this.velocity.event.emit("set",{x:this.velocity.y, y:-this.velocity.x});
+				}else if(ch==="r" || ("A"<=ch && ch<="Z")){
+					//Reverse
+					this.velocity.event.emit("multiply",-1);
+				}else if(ch==="x"){
+					//Absolute Vector
+				}
+				//Cell Crunching
+				else if("0"<=ch && ch<="9"){
+					st.push(parseInt(ch));
+					//this.stack.event.emit("push",parseInt(ch));
+			}else if(ch==="+"){
+				//Add
+				st.push(st.pop()+st.pop());
+			}else if(ch==="*"){
+				//Multiply
+				st.push(st.pop()*st.pop());
+			}else if(ch==="-"){
+				//Substract
+				su.push(-st.pop()+st.pop());
+			}else if(ch==="/"){
+				//Divide
+				var right=st.pop(),left=st.pop();
+				var result=Math.floor(left/right);
+				if(isFinite(result)){
+					st.push(result);
+				}else{
+					//zero divisionとか
+					st.push(0);
+				}
+			}else if(ch==="%"){
+				//Remainder
+				var right=st.pop(), left=st.pop();
+				var result=Math.floor(left%right);
+				if(isFinite(result)){
+					st.push(result);
+				}else{
+					st.push(0);
+				}
+			}else if(ch==='"'){
+				//Toggle Stringmode
+				this.event.emit("stringmode",true);
+			}else if(ch==="'"){
+				//Fetch Character
+				forward();
+				var c=this.field.getInstruction(this.position.x,this.position.y);
+				st.push(c.charCodeAt(0));
+			}//Stack Manipulation
+			else if(ch==="$"){
+				//Pop
+				st.pop();
+			}else if(ch===":"){
+				//Duplicate
+				var p=st.pop();
+				st.push(p,p);
+			}else if(ch==="\\"){
+				//Swap
+				var f=st.pop(), s=st.pop();
+				st.push(f,s);
+			}else if(ch==="n"){
+				//Clear Stack
+				st.event.emit("clear");
+			}//Stack Stack Manipulation
+			else if(ch==="{"){
+				//Begin Block
+				var num=st.pop();
+				//SOSSからnum個のスタックをとる(空きは0で埋める）
+				var values=[];
+				if(num<0){
+					//numが負の場合逆にSOSSに0を積む
+					for(var i=0;i<-num;i++){
+						st.push(0);
+					}
+				}else{
+					for(var i=0;i<num;i++){
+						values.push(st.pop());
+					}
+				}
+				//そしてSOSSに位置ベクトルを積む
+				st.pushVector(this.position);
+				//TOSSを用意する
+				st.newStack();
+				//さっきのを積む
+				st.push.apply(st,values.reverse());
+				//1個飛ばす（戻り先なので）
+				forward();
+			}else if(ch==="}"){
+				//End Block
+				if(st.stacks.length===1){
+					//underflow!
+					this.velocity.event.emit("multiply",-1);
+				}else{
+
+					var num=st.pop();
+					var values=[];
+					if(num<0){
+						//numが負の場合はSOSSから取り除く
+					}else{
+						//TOSSからnumだけとる
+						for(var i=0;i<num;i++){
+							values.push(st.pop());
+						}
+					}
+					st.popStack();
+					//ベクトル
+					var vec=st.popVector();	//新しいposition
+					this.position.event.emit("set",vec);
+					//SOSSに移す
+					st.push.apply(st,values.reverse());
+					if(num<0){
+						//負の場合はSOSSから取り除く
+						for(var i=0;i<-num;i++){
+							st.pop();
+						}
+					}
+				}
+			}else if(ch==="u"){
+				//Stack under Stack
+				if(st.stacks.length===1){
+					//underflow!
+					this.velocity.event.emit("multiply",-1);
+				}else{
+					var count=st.pop();
+					//難しそうなのでスタックに任せる
+					st.event.emit("u_transfer",count);
+				}
+			}
 		}
-		if(ch===">"){
-			//Go East
-			this.velocity.event.emit("set",{x:1,y:0});
-		}else if(ch==="<"){
-			//Go West
-			this.velocity.event.emit("set",{x:-1,y:0});
-		}else if(ch==="^"){
-			//Go North
-			this.velocity.event.emit("set",{x:0,y:-1});
-		}else if(ch==="v"){
-			//Go South
-			this.velocity.event.emit("set",{x:0,y:1});
-		}else if(ch==="]"){
-			//Turn Right
-			this.velocity.event.emit("set",{x:-this.velocity.y, y:this.velocity.x});
-		}else if(ch==="["){
-			//Turn Left
-			this.velocity.event.emit("set",{x:this.velocity.y, y:-this.velocity.x});
-		}else if(ch==="r" || ("A"<=ch && ch<="Z")){
-			//Reverse
-			this.velocity.event.emit("multiply",-1);
-		}else if(ch==="x"){
-			//Absolute Vector
-		}
+
 		//移動する
-		this.position.event.emit("add",this.velocity);
+		forward();
+		//次へ進む
+		function forward(){
+			t.position.event.emit("add",t.velocity);
+		}
 	},
 });
 function Stack(game,event,param){
+	//Stack Stack
+	this.stacks=[[]];
 	this.stack=[];
 }
 Stack.prototype={
+	init:function(game,event,param){
+		//スタックに追加
+		this.stack=this.stacks[this.stacks.length-1];
+		var t=this;
+		event.on("push",function(){
+			//argumentsに複数あるかもしれない（その順に追加）
+			for(var i=0,l=arguments.length;i<l;i++){
+				t.stack.push(arguments[i]);
+			}
+		});
+		//x,yをもつオブジェクトをのせる
+		event.on("pushVector",function(obj){
+			t.stack.push(obj.x,obj.y);
+		});
+		event.on("pop",function(number){
+			//複数またはひとつ除く
+			if(!number){
+				//1つ
+				t.stack.pop();
+			}else{
+				t.stack.splice(t.stack.length-number,number);
+			}
+		});
+		event.on("clear",function(){
+			//スタック消去
+			t.stack.length=0;
+		});
+		//pushを書き換え
+		Object.defineProperty(this,"push",{
+			value:event.emit.bind(event,"push"),
+			enumerable:false,
+			writable:true,
+			configurable:true,
+		});
+		event.on("newStack",function(){
+			//新しいスタック
+			t.stack=[];
+			t.stacks.push(t.stack);
+		});
+		event.on("popStack",function(){
+			t.stacks.pop();
+			t.stack=t.stacks[t.stacks.length-1];
+		});
+		event.on("u_transfer",function(count){
+			//count個だけSOSSからTOSSへ移す
+			var toss=t.stacks.pop();
+			var soss=t.stacks.pop();
+			if(count>=0){
+				for(var i=0;i<count;i++){
+					toss.push(soss.pop() || 0);
+				}
+			}else{
+				//逆方向
+				for(var i=0;i<-count;i++){
+					soss.push(toss.pop() || 0);
+				}
+			}
+			//戻す
+			t.stacks.push(soss,toss);
+		});
+	},
 	renderInit:function(){
 		var div=document.createElement("div");
+		div.classList.add("stack");
 		return div;
 	},
-	renderTop:function(view){
+	render:function(view){
 		var div=view.getItem();
+		div.textContent=this.stacks.map(function(x){return x.join(" ")}).join(" / ");
+	},
+	///内部用
+	//簡易のため、操作後自らイベント発火
+	push:function(){
+		//init内で置き換えられる
+		//this.event.emit.apply(this.event,["push"].concat(arguments));
+	},
+	pushVector:function(obj){
+		this.event.emit("pushVector",obj);
+	},
+	popVector:function(){
+		//{x,y}のオブジェクトで返す
+		return {y:this.pop(), x:this.pop()};
+	},
+	pop:function(){
+		//1つ除く
+		if(this.stack.length===0)return 0;
+		var val=this.stack[this.stack.length-1];
+		this.event.emit("pop");
+		return val;
+	},
+	//popせずに最後のやつを取得
+	last:function(){
+		return this.stack[this.stack.length-1] || 0;
+	},
+	newStack:function(){
+		this.event.emit("newStack");
+	},
+	popStack:function(){
+		this.event.emit("popStack");
 	},
 }
 
