@@ -18,6 +18,7 @@ Field.prototype={
 		});
 		//position:Vector ch:String
 		event.on("input",function(position,ch){
+			if(ch<" " || "~"<ch)return;
 			var text=t.source[position.y] || "";
 			//文字を書き換える
 			var l=text.length;
@@ -216,6 +217,7 @@ Field.prototype={
 			position:pos,
 			velocity:v,
 			stack:game.add(Stack),
+			storageOffset:game.add(Vector,{x:0,y:0}),
 		});
 		this.event.emit("addIP",ip);
 		ip.run();
@@ -455,6 +457,7 @@ function IP(game,event,param){
 	Cursor.apply(this,arguments);
 	var t=this;
 	this.stack=param.stack || null;	//Stack
+	this.storageOffset=param.storageOffset;
 	this.output="";	//出力
 	this.mode="normal";
 }
@@ -569,8 +572,10 @@ IP.prototype=Game.util.extend(Cursor,{
 				}
 				//Cell Crunching
 				else if("0"<=ch && ch<="9"){
-					st.push(parseInt(ch));
+					st.push(parseInt(ch,10));
 					//this.stack.event.emit("push",parseInt(ch));
+				}else if("a"<=ch && ch<="f"){
+					st.push(parseInt(ch,16));
 				}else if(ch==="+"){
 					//Add
 					st.push(st.pop()+st.pop());
@@ -639,13 +644,16 @@ IP.prototype=Game.util.extend(Cursor,{
 						}
 					}
 					//そしてSOSSに位置ベクトルを積む
-					st.pushVector(this.position);
+					st.pushVector(this.storageOffset);
 					//TOSSを用意する
 					st.newStack();
 					//さっきのを積む
 					st.push.apply(st,values.reverse());
-					//1個飛ばす（戻り先なので）
-					forward();
+					//新しいstorage Offset
+					this.storageOffset.event.emit("set",{
+						x:this.position.x+this.velocity.x,
+						y:this.position.y+this.velocity.y,
+					});
 				}else if(ch==="}"){
 					//End Block
 					if(st.stacks.length===1){
@@ -666,7 +674,7 @@ IP.prototype=Game.util.extend(Cursor,{
 						st.popStack();
 						//ベクトル
 						var vec=st.popVector();	//新しいposition
-						this.position.event.emit("set",vec);
+						this.storageOffset.event.emit("set",vec);
 						//SOSSに移す
 						st.push.apply(st,values.reverse());
 						if(num<0){
@@ -754,6 +762,24 @@ IP.prototype=Game.util.extend(Cursor,{
 						this.velocity.event.emit("set",{x:-this.velocity.y, y:this.velocity.x});
 					}//同じならまっすぐ
 
+				}//Funge-Space Storage
+				else if(ch==="g"){
+					//Get
+					var vec=st.popVector();
+					st.push(this.field.getInstruction(this.storageOffset.x+vec.x,this.storageOffset.y+vec.y).charCodeAt(0));
+				}else if(ch==="p"){
+					//Put
+					var vec=st.popVector();
+					var val=st.pop();
+					this.field.event.emit("input",{
+						x:this.storageOffset.x+vec.x,
+						y:this.storageOffset.y+vec.y
+					}, String.fromCharCode(val));
+				}else if(ch==="s"){
+					//Store Character
+					forward();
+					this.field.event.emit("input",this.position,String.fromCharCode(st.pop()));
+
 				}//Standard Input/Output
 				else if(ch==="."){
 					//Output Decimal
@@ -767,9 +793,89 @@ IP.prototype=Game.util.extend(Cursor,{
 				}else if(ch==="~"){
 					//Input Character
 					st.push(10);
+				}//File Input/Output
+				else if(ch==="i"){
+					//Input File
+					st.popString();
+					st.pop();	//flags
+					st.popVector();
+					//ファイルオープンは失敗するので反射
+					this.velocity.event.emit("multiply",-1);
+				}else if(ch==="o"){
+					//Output File
+					st.popString();
+					st.pop();	//flags
+					st.popVector();
+					//失敗するので反射
+					this.velocity.event.emit("multiply",-1);
+				}//System Execution
+				else if(ch==="="){
+					//Execute
+					//そんなことはできない
+					st.popString();
+					st.push(Math.floor(Math.random()*99+1));	//失敗コード
+				}//System Informatin Retrieval
+				else if(ch==="y"){
+					//Get SysInfo
+					var d=new Date;
+					//まずのせるスタックを配列で生成
+					//topから順番に
+					var result=[
+						16,	//1
+						4,	//2
+						0x67616d65,	//3 ("game")
+						100,	//4 (1.00)
+						0,	//5
+						0x2f,	//6 ("/")
+						2,	//7
+						0,	//8
+						this.number,	//9
+						this.position.x,
+						this.position.y,	//10
+						this.velocity.x,
+						this.velocity.y,	//11
+						this.storageOffset.x,
+						this.storageOffset.y,	//12	
+						0,
+						0,	//13
+						this.field.width-1,
+						this.field.height-1,	//14
+						(d.getFullYear()-1900)*256*256+(d.getMonth()+1)*256+d.getDate(),	//15
+						d.getHours()*256*256+d.getMinutes()*256+d.getSeconds(),	//16
+						this.stack.stacks.map(function(x){return x.length}).reduce(function(a,b){return a+b},0),	//17
+						];
+					result.push.apply(result,this.stack.stacks.map(function(x){return x.length}));	//18
+					result.push(0,0,0,	//19
+							0,0);	//20
+					var arg=st.pop();
+					if(arg>0){
+						//ひとつだけ
+						st.push(result[arg] || 0);
+					}else{
+						//全部!!!
+						st.push.apply(st,result.reverse());
+					}
+				}//FingerPrints
+				else if(ch==="("){
+					//Load Semantics
+					var count=st.pop();	//count
+					for(var i=0;i<count;i++){
+						st.pop();
+					}
+					//だめだよ!
+					this.velocity.event.emit("multiply",-1);
+				}else if(ch===")"){
+					//Unload Semantics
+					var count=st.pop();	//count
+					for(var i=0;i<count;i++){
+						st.pop();
+					}
+				}//Noop
+				else if(ch==="z"){
 				}
-			}
 
+
+			}
 		}while(--times >0);
 
 		//移動する
@@ -850,6 +956,13 @@ Stack.prototype={
 			//戻す
 			t.stacks.push(soss,toss);
 		});
+		//null-terminatedの文字列を取り出す
+		event.on("popString",function(){
+			for(var i=t.stack.length-1;i>=0;i--){
+				if(!t.stack[i])break;
+			}
+			t.stack.length=Math.max(0,i);
+		});
 	},
 	renderInit:function(){
 		var div=document.createElement("div");
@@ -889,6 +1002,16 @@ Stack.prototype={
 	},
 	popStack:function(){
 		this.event.emit("popStack");
+	},
+	popString:function(){
+		//null terminatedの文字列を取得
+		var str="";
+		for(var i=this.stack.length-1;i>=0;i--){
+			if(!this.stack[i])break;
+			str+=String.fromCharCode(this.stack[i]);
+		}
+		this.event.emit("popString");
+		return str;
 	},
 }
 
