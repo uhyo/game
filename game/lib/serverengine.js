@@ -5,7 +5,8 @@ Game.prototype.internal_init=function(){
 	this.event.emit=function(name){
 		var args=Array.prototype.slice.call(arguments,1);
 		this._old_emit.apply(this,[name].concat(args));
-		if(name==="loop")return;
+		//特殊なイベントは除外する
+		if(name==="loop" || name==="newListener" ||  name==="entry" || name==="gamestart")return;
 		game.transport.gameevent(name,args);
 	};
 	//ループ
@@ -26,6 +27,7 @@ Game.prototype.init=function(view,viewparam){
 };
 Game.prototype.start=function(){
 	//何もしない
+	this.event.emit("gamestart");
 };
 Game.prototype._old_newUser=Game.prototype.newUser;
 Game.prototype.newUser=function(option,event){
@@ -194,6 +196,7 @@ Game.prototype.session=function(user,option){
 Game.prototype.unsession=function(user){
 	delete this.sessionUsers[user._socket.id];
 };
+Game.prototype.env="server";
 function ServerView(game,view){
 	Game.View.apply(this);
 	//viewの中身をからっぽにする
@@ -271,7 +274,7 @@ ServerTransporter.prototype={
 		});
 	},
 	gameevent:function(name,args){
-		this.broadcast("gameevnt",{
+		this.broadcast("gameevent",{
 			name:name,
 			args:args,
 		});

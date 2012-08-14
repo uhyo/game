@@ -1,10 +1,11 @@
 var game=new Game();
 //フィールドを定義
 function Field(game,event,param){
-	this.source=[">v","^<"];	//ソースコード（y座標を配列で表現）
+	this.source=[];	//ソースコード（y座標を配列で表現）
 	
 	this.cursors=[];	//登録されている
 	this.ips=[];	//実行中のIP
+	this.problem=null;
 }
 Field.prototype={
 	init:function(game,event){
@@ -33,6 +34,11 @@ Field.prototype={
 			//間が飛ぶかもしれないけど気にしない
 			t.source[position.y]=text;
 		});
+		//問題が決定した
+		event.on("addProblem",function(problem){
+			//problem: ProblemPanel
+			t.problem=problem;
+		});
 	},
 	renderTop:true,
 	renderInit:function(view){
@@ -46,9 +52,13 @@ Field.prototype={
 			pre.appendChild(document.createTextNode("\n"));
 		}
 		div.appendChild(pre);
-		var info=document.createElement("div2");
+		var info=document.createElement("div");
 		info.classList.add("info");
 		div.appendChild(info);
+		var div2=document.createElement("div");
+		//問題表示用
+		div2.classList.add("problemarea");
+		div.appendChild(div2);
 		return div;
 	},
 	render:function(view){
@@ -72,6 +82,12 @@ Field.prototype={
 		while(info.hasChildNodes())info.removeChild(info.firstChild);
 		for(i=0,l=this.ips.length;i<l;i++){
 			info.appendChild(view.render(this.ips[i]));
+		}
+		//問題を描画する
+		if(this.problem){
+			//問題表示
+			var pra=div.getElementsByClassName("problemarea")[0];
+			pra.appendChild(view.render(this.problem));
 		}
 		//Cursorを描画できる ipflg:IPかどうか
 		function renderCursor(cursor,ipflg){
@@ -208,8 +224,20 @@ Field.prototype={
 			//すでにある
 			return;
 		}
-		var pos=game.add(LimitedVector,cursor.position);
-		var v=game.add(Vector,cursor.velocity);
+		
+		var posobj, vobj;
+		switch(cursor.number){
+			case 0://1P
+				posobj={x:0,y:0};
+				vobj={x:1,y:0};
+				break;
+			case 1://2P
+				posobj={x:this.width-1, y:this.height-1};
+				vobj={x:-1,y:0};
+				break;
+		}
+		var pos=game.add(Vector,posobj);
+		var v=game.add(Vector,vobj);
 		var ip=game.add(IP,{
 			number:cursor.number,
 			field:this,
@@ -306,6 +334,7 @@ function Cursor(game,event,param){
 	this.user=param.user || null;
 	this.position=param.position || null;	//Vector
 	this.velocity=param.velocity || null;	//Vector
+	this.input=false;	//まだ入力できない
 }
 Cursor.prototype={
 	//init
@@ -328,42 +357,6 @@ Cursor.prototype={
 		var user=this.user, ev=user.event;
 		if(user.internal){
 			//! 要整理
-			//キー操作
-			input.addEventListener('keydown',function(e){
-				var c=e.keyCode;
-				if(37<=c && c<=40){
-					//方向キーで移動
-					var obj={};
-					switch(c){
-						case 37:
-							obj.x=-1,obj.y=0;
-							break;
-						case 38:
-							obj.x=0,obj.y=-1;
-							break;
-						case 39:
-							obj.x=1,obj.y=0;
-							break;
-						case 40:
-							obj.x=0,obj.y=1;
-							break;
-					}
-					ev.emit("move",obj);
-				}else if(c===8){
-					//BS
-					ev.emit("special","BackSpace");
-				}else if(c===46){
-					//Delete
-					ev.emit("special","Delete");
-				}else if(c===116){
-					//F5
-					ev.emit("special","Run");
-				}else{
-					//何もない
-					return;
-				}
-				e.preventDefault();
-			},false);
 			//文字入力
 			input.addEventListener('input',function(e){
 				var v=input.value;
@@ -371,7 +364,9 @@ Cursor.prototype={
 					//入力された
 					var ch=v.charCodeAt(0);
 					if(0x20<=ch && ch<=0x7e){
-						ev.emit("input",v.charAt(0));
+						if(t.input){
+							ev.emit("input",v.charAt(0));
+						}
 					}
 					input.value="";
 
@@ -396,8 +391,13 @@ Cursor.prototype={
 		//ユーザーのキー入力で動く
 		var user=this.user;
 		var t=this;
+		//はじまるまでは動かない
+		game.event.on("editstart",function(){
+			t.input=true;
+		})/
 		//debugger;
 		user.event.on("move",function(obj){
+			if(!t.input)return;
 			if(obj.x!=null && obj.y!=null){
 				//x,yを指定された
 				t.velocity.event.emit("set",{
@@ -408,6 +408,7 @@ Cursor.prototype={
 			t.moveForward();
 		});
 		user.event.on("input",function(ch){
+			if(!t.input)return;
 			//Field->(depend on)->Cursor なので自動書き換えに期待
 			//文字を入力した
 			t.field.event.emit("input",t.position,ch);
@@ -429,6 +430,7 @@ Cursor.prototype={
 		});
 		//その他のキー操作
 		user.event.on("special",function(mode){
+			if(!t.input)return;
 			switch(mode){
 				case "BackSpace":
 					//戻って削除
@@ -481,6 +483,13 @@ IP.prototype=Game.util.extend(Cursor,{
 			}else{
 				t.output+=String.fromCharCode(code);
 			}
+		});
+		//止まる
+		event.on("stop",function(){
+		});
+		//スピード
+		game.event.on("editstart",function(speed){
+			t.clockInterval=speed;
 		});
 	},
 	renderTop:false,
@@ -882,11 +891,36 @@ IP.prototype=Game.util.extend(Cursor,{
 		forward();
 		//次へ進む
 		function forward(){
-			t.position.event.emit("add",t.velocity);
+			go(t.velocity);
+			//t.position.event.emit("add",t.velocity);
 		}
 		//前へ戻る
 		function backward(){
-			t.position.event.emit("subtract",t.velocity);
+			go({x:t.velocity.x*-1, y:t.velocity.y*-1})
+			//t.position.event.emit("subtract",t.velocity);
+		}
+		//とにかく進む
+		function go(vector){
+			//vector:{x,y}
+			var nv={
+				x:t.position.x+vector.x,
+				y:t.position.y+vector.y,
+			};
+			if(chk(nv)){
+				var delta={x:-vector.x, y:-vector.y};
+				//逆方向へ
+				do{
+					nv.x+=delta.x, nv.y+=delta.y;
+				}while(!chk(nv));
+				//行き過ぎなのでひとつ戻る
+				nv.x-=delta.x, nv.y-=delta.y;
+			}
+			t.position.event.emit("set",nv);
+
+			//外に出ているかどうかチェック
+			function chk(v){
+				return v.x<0 || v.y<0 || v.x>=t.field.width || v.y>=t.field.height;
+			}
 		}
 	},
 });
@@ -1015,68 +1049,308 @@ Stack.prototype={
 	},
 }
 
+//画面を被うパネル
+function Panel(game,event,param){
+}
+Panel.prototype={
+	str:"",	//表示文字列
+	renderTop:true,
+	renderInit:function(view){
+		var div=document.createElement("div");
+		div.classList.add("panel");
+		div.classList.add("simple");
+		return div;
+	},
+	render:function(view){
+		var div=view.getItem();
+		div.textContent=this.str;
+	},
+};
+//待機中の表示
+function WaitingPanel(game,event,param){
+	Panel.apply(this,arguments);
+}
+WaitingPanel.prototype=Game.util.extend(Panel,{
+	str:"現在募集中です",
+	init:function(game,event,param){
+		game.event.on("duel",function(number){
+			//人数に達したら消える
+			event.emit("die");
+		});
+	},
+});
+//難易度選択
+function LevelPanel(game,event,param){
+	this.user=param.user;
+	this.field=param.field;
+	this.levels=["Easy","Normal","Hard"];
+	this.index=0;
+}
+LevelPanel.prototype={
+	init:function(game,event){
+		var user=this.user, ev=user.event;
+		var t=this;
+		ev.on("move",handler);
+		ev.on("die",function(){
+			ev.removeListener("move",handler);
+		});
+		event.on("select",function(delta){
+			if(delta===-1){
+				if(--t.index<0){
+					t.index=0;
+				}
+			}else if(delta===1){
+				if(++t.index>=t.levels.length){
+					t.index--;
+				}
+			}
+		});
+		event.on("decide",function(){
+			//決定した　出題パネルを出す
+			var problem=game.add(ProblemPanel,{
+				level:t.index,
+				field:t.field,
+			});
+			t.field.event.emit("addProblem",problem);
+			event.emit("die");
+			event.removeAllListeners();
+			setTimeout(function(){
+				var counter=game.add(CountdownPanel,{
+					count:5,
+				});
+				counter.event.once("die",function(){
+					//試合開始だ!
+					problem.event.emit("inactive");
+					game.event.emit("editstart",problem.speed);
+				});
+			},5000);
+		});
+		function handler(obj){
+			//moveを流用
+			if(obj.x===0){
+				event.emit("select",obj.y);
+			}else if(obj.x===1){
+				//決定
+				event.emit("decide");
+			}
+		}
+	},
+	renderTop:true,
+	renderInit:function(view){
+		var sec=document.createElement("section");
+		sec.classList.add("panel");
+		sec.classList.add("levelselect");
+		var h1=document.createElement("h1");
+		h1.textContent="難易度選択";
+		sec.appendChild(h1);
+		var p=document.createElement("p");
+		if(this.user===game.user){
+			//自分が選択する
+			p.textContent="上下キー（選択）と右キー（決定）で難易度を選択して下さい";
+		}else{
+			p.textContent="1Pが難易度を選択しています...";
+		}
+		sec.appendChild(p);
+		var ul=document.createElement("ul");
+		for(var i=0;item=this.levels[i++];){
+			var li=document.createElement("li");
+			li.textContent=item;
+			ul.appendChild(li);
+		}
+		sec.appendChild(ul);
+		return sec;
+	},
+	render:function(view){
+		var sec=view.getItem();
+		var ul=sec.getElementsByTagName("ul")[0];
+		var lis=ul.getElementsByTagName("li");
+		for(var i=0,l=lis.length;i<l;i++){
+			if(i===this.index){
+				lis[i].classList.add("selected");
+			}else{
+				lis[i].classList.remove("selected");
+			}
+		}
+	},
+};
+//問題定義パネル
+function ProblemPanel(game,event,param){
+	this.level=param.level;	//0～2?
+	this.field=param.field;
+	this.active=true;	//問題を全面に表示されるかどうか
+	//問題決定
+	var len=this.problems[this.level].length;
+	this.number=Math.floor(Math.random()*len);
+}
+ProblemPanel.prototype={
+	init:function(game,event){
+		var t=this;
+		event.on("inactive",function(){
+			t.active=false;
+		});
+	},
+	//renderTop:true,
+	renderInit:function(view){
+		var sec=document.createElement("section");
+		sec.classList.add("levelselect");
+		var h1=document.createElement("h1");
+		h1.textContent="問題";
+		sec.appendChild(h1);
+		//問題形式に応じて作る
+		var problem=this.problems[this.level][this.number];
+		var p=document.createElement("p");
+		sec.appendChild(p);
+		switch(problem.type){
+			case "simpleString":
+				//文字列出力
+				var code=document.createElement("code");
+				code.classList.add("order");
+				code.style.display="block";
+				code.textContent='"'+problem.value+'"';
+				p.appendChild(code);
+				p.appendChild(document.createTextNode("を出力しなさい"));
+				break;
+		}
+		//入力
+		var h2=document.createElement("h2");
+		h2.textContent="入力";
+		sec.appendChild(h2);
+		var input=problem.input;
+		if(!input){
+			var p2=document.createElement("p");
+			p2.textContent="なし";
+			sec.appendChild(p2);
+		}else{
+			var pre2=document.createElement("pre");
+			pre2.classList.add("output");
+			pre2.textContent=input.join("\n");
+			sec.appendChild(pre2);
+
+		}
+		return sec;
+	},
+	render:function(view){
+		var sec=view.getItem();
+		if(this.active){
+			sec.classList.remove("inactive");
+			sec.classList.add("panel");
+		}else{
+			sec.classList.add("inactive");
+			sec.classList.remove("panel");
+		}
+	},
+	//問題コレクション
+	/*
+	   {
+		type: ***
+		input:null or Array
+		input Array:[
+		speed: 200,	//IP動作スピード[s/回]
+		string,string,...
+		]
+	 */
+	problems:[
+		//Easy
+		[
+			{
+				type:"simpleString",
+				value:"Hello, world!",
+				speed:100,
+				input:null,
+			},
+		],
+	],
+};
+//カウントダウンパネル
+function CountdownPanel(game,event,param){
+	this.count=param.count;
+	//カウントダウンする
+	var t=this;
+	t.str=String(this.count);
+	down();
+	function down(){
+		event.emit("set",String(t.count--));
+		if(t.count>=0){
+			setTimeout(down,1000);
+		}else{
+			event.emit("die");
+		}
+	}
+}
+CountdownPanel.prototype=Game.util.extend(Panel,{
+	init:function(game,event){
+		var t=this;
+		event.on("set",function(str){
+			t.str=str;
+		});
+	},
+});
 //ゲーム初期化
 var field=null;
 game.init(Game.ClientDOMView);
-game.config.fps=10;
-game.playersNumber=2;
+//なんと一人のときは一人モード
+game.playersNumber=game.env==="standalone" ? 1 : 2;
 game.useUser(Game.DOMUser,function(user){
-});
-game.internal(function(){
-	field=game.add(Field);
-});
-
-//keydownのイベントオブジェクトからprintableキーを
-var getChar=(function(){
-	//[ normal, shift]
-	var specialKeys={
-		0xba:["*",":"],
-		0xbb:[";","+"],
-		0xbc:[",","<"],
-		0xbd:["-","="],
-		0xbe:[".",">"],
-		0xbf:["/","?"],
-		0xc0:["@","`"],
-		0xdb:["[","{"],
-		0xdc:["\\","|"],
-		0xdd:["]","}"],
-		0xde:["^","~"],
-		0xe2:["\\","_"],
-	};
-
-	return getChar;
-	function getChar(e){
-		var ch=e.keyCode;
-		console.log("char!",ch,e.shiftKey);
-		if(0x41<=ch && ch<=0x5a){
-			//a～z
-			if(e.shiftKey){
-				//A～Z
-				return String.fromCharCode(ch);
-			}else{
-				//a～z
-				return String.fromCharCode(ch+0x20);
+	//キー操作
+	var ev=user.event;
+	document.addEventListener('keydown',function(e){
+		var c=e.keyCode;
+		if(37<=c && c<=40){
+			//方向キーで移動
+			var obj={};
+			switch(c){
+				case 37:
+					obj.x=-1,obj.y=0;
+					break;
+				case 38:
+					obj.x=0,obj.y=-1;
+					break;
+				case 39:
+					obj.x=1,obj.y=0;
+					break;
+				case 40:
+					obj.x=0,obj.y=1;
+					break;
 			}
-		}else if(0x30<=ch && ch<=0x39){
-			//0～9
-			if(e.shiftKey){
-				//!～)
-				if(ch===0x30)return null;	//Shift+0
-				return String.fromCharCode(ch-0x10);
-			}else{
-				//0～9
-				return String.fromCharCode(ch);
-			}
-		}else if(specialKeys[ch]){
-			return specialKeys[ch][e.shiftKey ? 1 : 0];
+			ev.emit("move",obj);
+		}else if(c===8){
+			//BS
+			ev.emit("special","BackSpace");
+		}else if(c===46){
+			//Delete
+			ev.emit("special","Delete");
+		}else if(c===116){
+			//F5
+			ev.emit("special","Run");
+		}else{
+			//何もない
+			return;
 		}
-	}
-})();
-game.event.on("entry",function(user){
-	game.session(user);
-	var cursor=field.setupCursor(user);
-	if(!cursor)return;
-	field.event.emit("addCursor",cursor);
+		e.preventDefault();
+	},false);
+});
+
+//special events
+//game.internal(function(){
+game.event.on("gamestart",function(){
+	game.add(WaitingPanel);
+	var field=game.add(Field);
+
+	game.event.on("entry",function(user){
+		game.session(user);
+		var cursor=field.setupCursor(user);
+		if(!cursor)return;
+		field.event.emit("addCursor",cursor);
+		if(field.cursors.length===game.playersNumber){
+			//十分集まった
+			game.event.emit("duel");
+			//難易度選択パネルを表示
+			game.add(LevelPanel,{
+				user:field.cursors[0].user,
+				field:field,
+			});
+		}
+	});
 });
 
 game.start();

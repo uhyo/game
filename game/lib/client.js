@@ -33,7 +33,7 @@ gaminginfo.on("new",function(game){
 			//クライアント側に追加する
 			//console.log(window[obj.constructorName]);
 			//console.log("add",obj.constructorName);
-			var o=game._old_add(window[obj.constructorName],executeJSON(game,obj.param));
+			var o=game._old_add(window[obj.constructorName],executeJSON(game,obj.param),true);
 			o._id=obj._id;
 			//入れる
 			game.objectsmap[o._id]=o;
@@ -157,6 +157,7 @@ Game.prototype.initObject=function(d){
 };
 //internalでないので実行しない
 Game.prototype.internal=function(){};
+Game.prototype.env="client";
 
 /*function ClientManager(game){
 	Game.Manager.apply(this,arguments);
@@ -184,7 +185,7 @@ function executeJSON(game,obj){
 			user.init(game);
 			game.objectsmap[obj._id]=user;
 		}
-		console.log(obj._id,obj.properties);
+		//console.log(obj._id,obj.properties);
 		delete obj.properties.internal;
 		setProperties(user,executeJSON(game,obj.properties));
 		return user;
@@ -209,7 +210,7 @@ function executeJSON(game,obj){
 		if(!constructor)throw new Error(obj.constructorName);
 		if(!obj.properties)return null;
 		//var o=game._old_add(constructor,executeJSON(game,obj._param));
-		var o=game._old_add(constructor,{});
+		var o=game._old_add(constructor,{},true);
 		//先に入れる
 		o._id=obj._id;
 		game.objectsmap[obj._id]=o;

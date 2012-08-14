@@ -93,8 +93,10 @@ Game.prototype={
 		//hard
 		//var user=new Game.User();
 		var user=this.newUser();
-		this.entry(user,{});
+		this.user=user;
+		this.event.emit("gamestart");
 		this.view.event.emit("gamestart");
+		this.entry(user,{});
 	},
 	//ユーザーが登録された
 	entry:function(user,opt){
@@ -172,7 +174,8 @@ Game.prototype={
 		return new Game.ObjectEmitter(this,obj);
 	},
 	//objects return:internal object
-	add:function(constructor,param){
+	add:function(constructor,param,_rerender_flg){
+		//_rerender_flg: trueならレンダリングしない
 		if(typeof constructor!=="function"){
 			throw new Error;
 		}
@@ -217,6 +220,7 @@ Game.prototype={
 
 		this.objects.push(d);
 		this.transport.add(d);
+		if(!_rerender_flg)this.view.event.emit("rerender");
 		return d;
 	},
 	initObject:function(d){
@@ -314,7 +318,9 @@ Game.prototype={
 		fps:30,
 		adjust:5,
 		stopWithNoUser:true,
-	}
+	},
+	//環境 単体動作中なら"standalone" サーバーから"server" クライアントなら"client"
+	env:"standalone",
 };
 //オブジェクト用Emitter
 Game.ObjectEmitter=function(game,obj){
@@ -449,6 +455,7 @@ Game.ClientDOMView.prototype=Game.util.extend(Game.ClientView,{
 		return o;
 	},
 	getMap:function(obj){
+		if(!obj)debugger;
 		var m=this.nodeMap[obj._id];
 		if(!m){
 			m=this.nodeMap[obj._id]={
