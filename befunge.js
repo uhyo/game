@@ -455,14 +455,14 @@ function IP(game,event,param){
 	Cursor.apply(this,arguments);
 	var t=this;
 	this.stack=param.stack || null;	//Stack
-	this.stringmode=false;
+	this.mode="normal";
 }
 IP.prototype=Game.util.extend(Cursor,{
 	init:function(game,event,param){
 		var t=this;
 		Cursor.prototype.init.apply(this,arguments);
-		event.on("stringmode",function(mode){
-			t.stringmode=mode;
+		event.on("mode",function(mode){
+			t.mode=mode;
 		});
 	},
 	renderTop:false,
@@ -495,177 +495,225 @@ IP.prototype=Game.util.extend(Cursor,{
 	tick:function(){
 		//実行する
 		var t=this;
-		var ch=this.field.getInstruction(this.position.x,this.position.y);
-		var st=this.stack;
-		//console.log(ch,this.stringmode);
-		if(this.stringmode){
-			//stringmodeだ
-			if(ch===" " && st.last()===32){
-				//SGML-style
-			}else if(ch==='"'){
-				//Toggle Stringmode
-				this.event.emit("stringmode",false);
+		var times=1;	//回数
+		do{
+			var ch=this.field.getInstruction(this.position.x,this.position.y);
+			var st=this.stack;
+			//console.log(ch,this.stringmode);
+			if(this.mode==="jumpover"){
+				if(ch===";"){
+					//jumpover終了
+					this.event.emit("mode","normal");
+				}
+			}else if(this.mode==="string"){
+				//stringmodeだ
+				if(ch===" " && st.last()===32){
+					//SGML-style
+				}else if(ch==='"'){
+					//Toggle Stringmode
+					this.event.emit("mode","normal");
+				}else{
+					st.push(ch.charCodeAt(0));
+				}
 			}else{
-				st.push(ch.charCodeAt(0));
-			}
-		}else{
-			//Direction Changing命令
-			if(ch==="?"){
-				//Go Away
-				var rnd=Math.floor(Math.random()*4);
-				ch=["><^v"][rnd];
-			}
-			if(ch===">"){
-				//Go East
-				this.velocity.event.emit("set",{x:1,y:0});
-			}else if(ch==="<"){
-				//Go West
-				this.velocity.event.emit("set",{x:-1,y:0});
-			}else if(ch==="^"){
-				//Go North
-				this.velocity.event.emit("set",{x:0,y:-1});
-			}else if(ch==="v"){
-				//Go South
-				this.velocity.event.emit("set",{x:0,y:1});
-			}else if(ch==="]"){
-				//Turn Right
-				this.velocity.event.emit("set",{x:-this.velocity.y, y:this.velocity.x});
-			}else if(ch==="["){
-				//Turn Left
+				//Direction Changing命令
+				if(ch==="?"){
+					//Go Away
+					var rnd=Math.floor(Math.random()*4);
+					ch=["><^v"][rnd];
+				}
+				if(ch===">"){
+					//Go East
+					this.velocity.event.emit("set",{x:1,y:0});
+				}else if(ch==="<"){
+					//Go West
+					this.velocity.event.emit("set",{x:-1,y:0});
+				}else if(ch==="^"){
+					//Go North
+					this.velocity.event.emit("set",{x:0,y:-1});
+				}else if(ch==="v"){
+					//Go South
+					this.velocity.event.emit("set",{x:0,y:1});
+				}else if(ch==="]"){
+					//Turn Right
+					this.velocity.event.emit("set",{x:-this.velocity.y, y:this.velocity.x});
+				}else if(ch==="["){
+					//Turn Left
 					this.velocity.event.emit("set",{x:this.velocity.y, y:-this.velocity.x});
 				}else if(ch==="r" || ("A"<=ch && ch<="Z")){
 					//Reverse
 					this.velocity.event.emit("multiply",-1);
 				}else if(ch==="x"){
 					//Absolute Vector
+					var vec=st.popVector();
+					this.velocity.event.emit("set",vec);
 				}
 				//Cell Crunching
 				else if("0"<=ch && ch<="9"){
 					st.push(parseInt(ch));
 					//this.stack.event.emit("push",parseInt(ch));
-			}else if(ch==="+"){
-				//Add
-				st.push(st.pop()+st.pop());
-			}else if(ch==="*"){
-				//Multiply
-				st.push(st.pop()*st.pop());
-			}else if(ch==="-"){
-				//Substract
-				su.push(-st.pop()+st.pop());
-			}else if(ch==="/"){
-				//Divide
-				var right=st.pop(),left=st.pop();
-				var result=Math.floor(left/right);
-				if(isFinite(result)){
-					st.push(result);
-				}else{
-					//zero divisionとか
-					st.push(0);
-				}
-			}else if(ch==="%"){
-				//Remainder
-				var right=st.pop(), left=st.pop();
-				var result=Math.floor(left%right);
-				if(isFinite(result)){
-					st.push(result);
-				}else{
-					st.push(0);
-				}
-			}else if(ch==='"'){
-				//Toggle Stringmode
-				this.event.emit("stringmode",true);
-			}else if(ch==="'"){
-				//Fetch Character
-				forward();
-				var c=this.field.getInstruction(this.position.x,this.position.y);
-				st.push(c.charCodeAt(0));
-			}//Stack Manipulation
-			else if(ch==="$"){
-				//Pop
-				st.pop();
-			}else if(ch===":"){
-				//Duplicate
-				var p=st.pop();
-				st.push(p,p);
-			}else if(ch==="\\"){
-				//Swap
-				var f=st.pop(), s=st.pop();
-				st.push(f,s);
-			}else if(ch==="n"){
-				//Clear Stack
-				st.event.emit("clear");
-			}//Stack Stack Manipulation
-			else if(ch==="{"){
-				//Begin Block
-				var num=st.pop();
-				//SOSSからnum個のスタックをとる(空きは0で埋める）
-				var values=[];
-				if(num<0){
-					//numが負の場合逆にSOSSに0を積む
-					for(var i=0;i<-num;i++){
+				}else if(ch==="+"){
+					//Add
+					st.push(st.pop()+st.pop());
+				}else if(ch==="*"){
+					//Multiply
+					st.push(st.pop()*st.pop());
+				}else if(ch==="-"){
+					//Substract
+					su.push(-st.pop()+st.pop());
+				}else if(ch==="/"){
+					//Divide
+					var right=st.pop(),left=st.pop();
+					var result=Math.floor(left/right);
+					if(isFinite(result)){
+						st.push(result);
+					}else{
+						//zero divisionとか
 						st.push(0);
 					}
-				}else{
-					for(var i=0;i<num;i++){
-						values.push(st.pop());
+				}else if(ch==="%"){
+					//Remainder
+					var right=st.pop(), left=st.pop();
+					var result=Math.floor(left%right);
+					if(isFinite(result)){
+						st.push(result);
+					}else{
+						st.push(0);
 					}
-				}
-				//そしてSOSSに位置ベクトルを積む
-				st.pushVector(this.position);
-				//TOSSを用意する
-				st.newStack();
-				//さっきのを積む
-				st.push.apply(st,values.reverse());
-				//1個飛ばす（戻り先なので）
-				forward();
-			}else if(ch==="}"){
-				//End Block
-				if(st.stacks.length===1){
-					//underflow!
-					this.velocity.event.emit("multiply",-1);
-				}else{
-
+				}else if(ch==='"'){
+					//Toggle Stringmode
+					this.event.emit("mode","string");
+				}else if(ch==="'"){
+					//Fetch Character
+					forward();
+					var c=this.field.getInstruction(this.position.x,this.position.y);
+					st.push(c.charCodeAt(0));
+				}//Stack Manipulation
+				else if(ch==="$"){
+					//Pop
+					st.pop();
+				}else if(ch===":"){
+					//Duplicate
+					var p=st.pop();
+					st.push(p,p);
+				}else if(ch==="\\"){
+					//Swap
+					var f=st.pop(), s=st.pop();
+					st.push(f,s);
+				}else if(ch==="n"){
+					//Clear Stack
+					st.event.emit("clear");
+				}//Stack Stack Manipulation
+				else if(ch==="{"){
+					//Begin Block
 					var num=st.pop();
+					//SOSSからnum個のスタックをとる(空きは0で埋める）
 					var values=[];
 					if(num<0){
-						//numが負の場合はSOSSから取り除く
+						//numが負の場合逆にSOSSに0を積む
+						for(var i=0;i<-num;i++){
+							st.push(0);
+						}
 					}else{
-						//TOSSからnumだけとる
 						for(var i=0;i<num;i++){
 							values.push(st.pop());
 						}
 					}
-					st.popStack();
-					//ベクトル
-					var vec=st.popVector();	//新しいposition
-					this.position.event.emit("set",vec);
-					//SOSSに移す
+					//そしてSOSSに位置ベクトルを積む
+					st.pushVector(this.position);
+					//TOSSを用意する
+					st.newStack();
+					//さっきのを積む
 					st.push.apply(st,values.reverse());
-					if(num<0){
-						//負の場合はSOSSから取り除く
-						for(var i=0;i<-num;i++){
-							st.pop();
+					//1個飛ばす（戻り先なので）
+					forward();
+				}else if(ch==="}"){
+					//End Block
+					if(st.stacks.length===1){
+						//underflow!
+						this.velocity.event.emit("multiply",-1);
+					}else{
+
+						var num=st.pop();
+						var values=[];
+						if(num<0){
+							//numが負の場合はSOSSから取り除く
+						}else{
+							//TOSSからnumだけとる
+							for(var i=0;i<num;i++){
+								values.push(st.pop());
+							}
+						}
+						st.popStack();
+						//ベクトル
+						var vec=st.popVector();	//新しいposition
+						this.position.event.emit("set",vec);
+						//SOSSに移す
+						st.push.apply(st,values.reverse());
+						if(num<0){
+							//負の場合はSOSSから取り除く
+							for(var i=0;i<-num;i++){
+								st.pop();
+							}
 						}
 					}
+				}else if(ch==="u"){
+					//Stack under Stack
+					if(st.stacks.length===1){
+						//underflow!
+						this.velocity.event.emit("multiply",-1);
+					}else{
+						var count=st.pop();
+						//難しそうなのでスタックに任せる
+						st.event.emit("u_transfer",count);
+					}
+				}//Flow Control
+				else if(ch==="#"){
+					//Trampoline
+					forward();
+				}else if(ch==="@" || ch==="q"){
+					//Stop, Quit
+					//Concurrentは使えないので
+					this.event.emit("stop");
+				}else if(ch===";"){
+					//Jump Over
+					//本当はとばすけど今回はひとつずつ
+					this.event.emit("mode","jumpover");
+				}else if(ch==="j"){
+					//Jump Forward
+					var num=st.pop();
+					if(num>=0){
+						for(var i=0;i<num;i++){
+							forward();
+						}
+					}else{
+						for(var i=0;i<-num;i++){
+							backward();
+						}
+					}
+				}else if(ch==="k"){
+					//Iterate
+					var num=st.pop();
+					forward();
+					//本当はSpaceを何度も繰り返さないけど・・・
+					//この場所を繰り返す
+					times=num+1;	//最初に減るので1個余計
+					continue;
 				}
-			}else if(ch==="u"){
-				//Stack under Stack
-				if(st.stacks.length===1){
-					//underflow!
-					this.velocity.event.emit("multiply",-1);
-				}else{
-					var count=st.pop();
-					//難しそうなのでスタックに任せる
-					st.event.emit("u_transfer",count);
-				}
+
 			}
-		}
+
+		}while(--times >0);
 
 		//移動する
 		forward();
 		//次へ進む
 		function forward(){
 			t.position.event.emit("add",t.velocity);
+		}
+		//前へ戻る
+		function backward(){
+			t.position.event.emit("subtract",t.velocity);
 		}
 	},
 });
