@@ -455,6 +455,7 @@ function IP(game,event,param){
 	Cursor.apply(this,arguments);
 	var t=this;
 	this.stack=param.stack || null;	//Stack
+	this.output="";	//出力
 	this.mode="normal";
 }
 IP.prototype=Game.util.extend(Cursor,{
@@ -463,6 +464,20 @@ IP.prototype=Game.util.extend(Cursor,{
 		Cursor.prototype.init.apply(this,arguments);
 		event.on("mode",function(mode){
 			t.mode=mode;
+		});
+		event.on("outputDecimal",function(number){
+			//数字をoutput!
+			t.output+=number+" ";
+		});
+		event.on("outputChar",function(code){
+			if(code===8){
+				//BS
+				t.output=t.output.slice(0,t.output.length-1);
+			}else if(code===10){
+				t.output+="\n";
+			}else{
+				t.output+=String.fromCharCode(code);
+			}
 		});
 	},
 	renderTop:false,
@@ -477,6 +492,10 @@ IP.prototype=Game.util.extend(Cursor,{
 		var div=view.getItem();
 		while(div.hasChildNodes())div.removeChild(div.firstChild);
 		//スタック情報とoutput情報
+		var pre=document.createElement("pre");
+		pre.classList.add("output");
+		pre.textContent=this.output;
+		div.appendChild(pre);
 		div.appendChild(view.render(this.stack));
 	},
 	catchInput:function(){
@@ -735,9 +754,20 @@ IP.prototype=Game.util.extend(Cursor,{
 						this.velocity.event.emit("set",{x:-this.velocity.y, y:this.velocity.x});
 					}//同じならまっすぐ
 
+				}//Standard Input/Output
+				else if(ch==="."){
+					//Output Decimal
+					this.event.emit("outputDecimal",st.pop());
+				}else if(ch===","){
+					//Output Character
+					this.event.emit("outputChar",st.pop());
+				}else if(ch==="&"){
+					//Input Decimal
+					st.push(0);
+				}else if(ch==="~"){
+					//Input Character
+					st.push(10);
 				}
-
-
 			}
 
 		}while(--times >0);
