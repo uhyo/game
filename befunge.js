@@ -279,27 +279,29 @@ Field.prototype={
 }
 //ベクトル
 function Vector(game,event,param){
-	var t=this;
 	this.x=param.x || 0;
 	this.y=param.y || 0;
-	//ベクトルを書き換える
-	event.on("set",function(obj){
-		t.set(obj);
-	});
-	//加算する
-	event.on("add",function(vector){
-		t.add(vector);
-	});
-	//減算する
-	event.on("subtract",function(vector){
-		t.subtract(vector);
-	});
-	//掛け算する
-	event.on("multiply",function(number){
-		t.multiply(number);
-	});
 }
 Vector.prototype={
+	init:function(game,event){
+		var t=this;
+		//ベクトルを書き換える
+		event.on("set",function(obj){
+			t.set(obj);
+		});
+		//加算する
+		event.on("add",function(vector){
+			t.add(vector);
+		});
+		//減算する
+		event.on("subtract",function(vector){
+			t.subtract(vector);
+		});
+		//掛け算する
+		event.on("multiply",function(number){
+			t.multiply(number);
+		});
+	},
 	set:function(obj){
 		if(obj.x!=null)this.x=obj.x;
 		if(obj.y!=null)this.y=obj.y;
@@ -1135,7 +1137,7 @@ LevelPanel.prototype={
 		var user=this.user, ev=user.event;
 		var t=this;
 		ev.on("move",handler);
-		ev.on("die",function(){
+		event.on("die",function(){
 			ev.removeListener("move",handler);
 		});
 		event.on("select",function(delta){
@@ -1270,7 +1272,6 @@ ProblemPanel.prototype={
 			pre2.classList.add("output");
 			pre2.textContent=input.join("\n");
 			sec.appendChild(pre2);
-
 		}
 		return sec;
 	},
@@ -1505,7 +1506,12 @@ game.event.on("gamestart",function handler(){
 
 	game.event.on("entry",function(user){
 		user.event.removeAllListeners();
-		game.session(user);
+		if(field.cursors.length<game.playersNumber){
+			//参加できる
+			game.session(user,{
+				expire:60,
+			});
+		}
 		var cursor=field.setupCursor(user);
 		if(!cursor)return;
 		field.event.emit("addCursor",cursor);
@@ -1518,6 +1524,15 @@ game.event.on("gamestart",function handler(){
 				field:field,
 			});
 		}
+		//接続切断時は
+		user.event.once("disconnect",function(){
+			if(field.cursors.every(function(c){
+				return !c.user.alive;
+			})){
+				//そして誰もいなくなった
+				game.event.emit("gamestart");
+			}
+		});
 	});
 	game.event.on("success",function(ip){
 		//このユーザーが成功したぞ！
@@ -1564,6 +1579,8 @@ game.event.on("gamestart",function handler(){
 						for(var j=0;j<l;j++){
 							//次ゲームに参加できるように
 							game.unsession(panels[j].user);
+							//もういいや別に
+							use.removeAllListeners('disconnect');
 							if(panels[j].index===0){
 								//やりたかったのに...
 								game.add(InfoPanel,{

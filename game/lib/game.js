@@ -127,22 +127,41 @@ exports.Server.prototype=Game.util.extend(ev.EventEmitter,{
 				var event=new EventEmitter();
 				socket.on("disconnect",function(){
 					//切断された
-					event.emit("disconnect");
+					//セッションに残っているかどうか確かめる
 					if(user){
-						user.alive=false;
-						game.byeUser(user);
+						var sess=game.sessionUsers[socket.id];
+						if(!sess){
+							//戻る可能性はない
+							dyingUser(user,socket);
+						}else{
+							//戻る可能性があるので有効期限のカウントダウン
+							var sessionid=socket.id;
+							if(sess.timerid){
+								clearTimeout(sess.timerid);
+							}
+							sess.timerid=setTimeout(function(){
+								delete game.sessionUsers[sessionid];
+								if(user.alive && user._socket.disconnected){
+									//戻ってこない
+									dyingUser(user,socket);
+								}
+							},sess.expire*1000);
+						}
 					}
-
 				});
 				socket.on("entry",function(sessionid,option){
 					//console.log(sessionid,game.sessionUsers);
 					// ユーザーを教えてあげる
 					//（サーバー側用ユーザーオブジェクト作成）
 					var stranger=true;	//新しい人か（entryする）
-					if(sessionid && game.sessionUsers[sessionid]){
+					var sass;
+					if(sessionid && (sass=game.sessionUsers[sessionid])){
 						//あのユーザーだ
-						user=game.sessionUsers[sessionid];
+						user=sass.user;
+						//要整理? disconnect回避のために一時的にfalse
+						user.alive=false;
 						game.unsession(user);
+						user.alive=true;
 						delete event;
 						event=user.event;
 						stranger=false;
@@ -158,7 +177,9 @@ exports.Server.prototype=Game.util.extend(ev.EventEmitter,{
 					});
 					if(!stranger){
 						//新しいソケットでセッション保存
-						game.session(user);
+						game.session(user,{
+							expire:sass.expire,
+						});
 					}
 					socket.on("initok",function(){
 						//game.event.emit("entry",user);
@@ -183,6 +204,14 @@ exports.Server.prototype=Game.util.extend(ev.EventEmitter,{
 				//動く
 				if(game.loopController){
 					game.loopController.start();
+				}
+				//ユーザーが完全にいなくなったときの処理
+				function dyingUser(user,socket){
+					if(user){
+						user.alive=false;
+						user.event.emit("disconnect");
+						game.byeUser(user);
+					}
 				}
 			});
 		});

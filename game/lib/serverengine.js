@@ -17,6 +17,11 @@ Game.prototype.internal_init=function(){
 	});
 	//ユーザーをとっておく
 	this.sessionUsers={};	//sessionidがキー
+	/* {
+	   user:(user)
+	   expire:(number)[s]
+	   timerid:(id) ? null
+	   } */
 };
 Game.prototype.init=function(view,viewparam){
 	//It's dummy!
@@ -184,17 +189,28 @@ Game.prototype.wholeEnvironment=function(user){
 Game.prototype.session=function(user,option){
 	if(!option)option={};
 	var sessionid=user._socket.id;
-	this.sessionUsers[sessionid]=user;
-	//いつ失効するか
-	var expire = isNaN(option.expire) ? 6000000 : option.expire-0;
-	setTimeout(function(){
-		delete this.sessionUsers[sessionid];
-	}.bind(this),expire);
+	var expire = isNaN(option.expire) ? 600 : option.expire-0;
+	this.sessionUsers[sessionid]={
+		user:user,
+		expire:expire,
+		timerid:null,
+	};
 	//console.log("session!",sessionid);
 	//console.log(this.sessionUsers);
 };
 Game.prototype.unsession=function(user){
+	var obj=this.sessionUsers[user._socket.id];
+	if(obj && obj.timerid){
+		//その場で切れる
+		clearTimeout(obj.timerid);
+	}
 	delete this.sessionUsers[user._socket.id];
+	if(user.alive && user._socket.disconnected){
+		//戻ってこない
+		user.alive=false;
+		user.event.emit("disconnect");
+		this.byeUser(user);
+	}
 };
 Game.prototype.env="server";
 function ServerView(game,view){
