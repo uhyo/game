@@ -111,6 +111,7 @@ exports.Server.prototype=Game.util.extend(ev.EventEmitter,{
 			//新しいインスタンスができた
 			//ゲーム用
 			gaminginfo.on("broadcast",function(name,obj){
+				//console.dir(obj);
 				io.sockets.emit(name,obj);
 			});
 			gaminginfo.on("private",function(socket,name,obj){

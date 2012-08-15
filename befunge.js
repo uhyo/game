@@ -16,6 +16,13 @@ Field.prototype={
 		});
 		event.on("addIP",function(ip){
 			t.ips.push(ip);
+			ip.event.once("die",function(){
+				//なくなったら消す
+				var index=t.ips.indexOf(ip);
+				if(index>=0){
+					t.ips.splice(index,1);
+				}
+			});
 		});
 		//position:Vector ch:String
 		event.on("input",function(position,ch){
@@ -38,6 +45,14 @@ Field.prototype={
 		event.on("addProblem",function(problem){
 			//problem: ProblemPanel
 			t.problem=problem;
+		});
+		//初期化
+		event.on("initField",function(){
+			t.source=[];	//ソースコード（y座標を配列で表現）
+
+			t.cursors=[];	//登録されている
+			t.ips=[];	//実行中のIP
+			t.problem=null;
 		});
 	},
 	renderTop:true,
@@ -84,10 +99,12 @@ Field.prototype={
 			info.appendChild(view.render(this.ips[i]));
 		}
 		//問題を描画する
+		var pra=div.getElementsByClassName("problemarea")[0];
 		if(this.problem){
 			//問題表示
-			var pra=div.getElementsByClassName("problemarea")[0];
 			pra.appendChild(view.render(this.problem));
+		}else{
+			while(pra.hasChildNodes())pra.removeChild(pra.firstChild);
 		}
 		//Cursorを描画できる ipflg:IPかどうか
 		function renderCursor(cursor,ipflg){
@@ -173,12 +190,14 @@ Field.prototype={
 			back:"#ffcccc",	//背景
 			color:"#ff0000",//文字
 			ipBack:"#ff9999",	//IPの背景
+			darkBack:"#dbafaf",	//暗い背景
 		},
 			//2P色（青）
 		{
 			back:"#ccccff",
 			color:"#0000ff",
 			ipBack:"#9999ff",
+			darkBack:"#afafdb",
 		},
 	],
 	//---内部用
@@ -394,7 +413,11 @@ Cursor.prototype={
 		//はじまるまでは動かない
 		game.event.on("editstart",function(){
 			t.input=true;
-		})/
+		});
+		//終了したら動けない
+		game.event.on("success",function(){
+			t.input=false;
+		});
 		//debugger;
 		user.event.on("move",function(obj){
 			if(!t.input)return;
@@ -462,6 +485,7 @@ function IP(game,event,param){
 	this.storageOffset=param.storageOffset;
 	this.output="";	//出力
 	this.mode="normal";
+	this.success=true;	//失敗したらfalseになる
 }
 IP.prototype=Game.util.extend(Cursor,{
 	init:function(game,event,param){
@@ -485,7 +509,18 @@ IP.prototype=Game.util.extend(Cursor,{
 			}
 		});
 		//止まる
-		event.on("stop",function(){
+		event.once("stop",function(){
+			var problem=t.field.problem.getProblem();
+			if(problem.check(t)){
+				//ミッションコンプリートした
+				game.event.emit("success",t);
+			}else{
+				//ダメ　やり直し
+				t.success=false;
+				setTimeout(function(){
+					event.emit("die");
+				},3000);
+			}
 		});
 		//スピード
 		game.event.on("editstart",function(speed){
@@ -497,11 +532,14 @@ IP.prototype=Game.util.extend(Cursor,{
 	renderInit:function(){
 		var div=document.createElement("div");
 		div.classList.add("ipInfo");
-		div.backgroundColor=this.field.colors[this.number].back;
 		return div;
 	},
 	render:function(view){
 		var div=view.getItem();
+
+		var c=this.field.colors[this.number];
+		div.style.backgroundColor= this.success ? c.back : c.darkBack;
+
 		while(div.hasChildNodes())div.removeChild(div.firstChild);
 		//スタック情報とoutput情報
 		var pre=document.createElement("pre");
@@ -516,11 +554,16 @@ IP.prototype=Game.util.extend(Cursor,{
 	//発進!!
 	run:function(){
 		var t=this;
+		var alive_flg=true;
 		tick();
 
+		//止まったら終わり
+		t.event.once("stop",function(){
+			alive_flg=false;
+		});
 		function tick(){
 			t.tick();
-			setTimeout(tick,t.clockInterval);
+			if(alive_flg)setTimeout(tick,t.clockInterval);
 		}
 	},
 	tick:function(){
@@ -711,6 +754,7 @@ IP.prototype=Game.util.extend(Cursor,{
 					//Stop, Quit
 					//Concurrentは使えないので
 					this.event.emit("stop");
+					return;
 				}else if(ch===";"){
 					//Jump Over
 					//本当はとばすけど今回はひとつずつ
@@ -1120,10 +1164,11 @@ LevelPanel.prototype={
 				});
 				counter.event.once("die",function(){
 					//試合開始だ!
+					var p=problem.getProblem();
 					problem.event.emit("inactive");
-					game.event.emit("editstart",problem.speed);
+					game.event.emit("editstart",p.speed);
 				});
-			},5000);
+			},1000);
 		});
 		function handler(obj){
 			//moveを流用
@@ -1197,7 +1242,7 @@ ProblemPanel.prototype={
 		h1.textContent="問題";
 		sec.appendChild(h1);
 		//問題形式に応じて作る
-		var problem=this.problems[this.level][this.number];
+		var problem=this.getProblem();
 		var p=document.createElement("p");
 		sec.appendChild(p);
 		switch(problem.type){
@@ -1239,6 +1284,10 @@ ProblemPanel.prototype={
 			sec.classList.remove("panel");
 		}
 	},
+	//問題を返す
+	getProblem:function(){
+		return this.problems[this.level][this.number];
+	},
 	//問題コレクション
 	/*
 	   {
@@ -1247,6 +1296,7 @@ ProblemPanel.prototype={
 		input Array:[
 		speed: 200,	//IP動作スピード[s/回]
 		string,string,...
+		check:function(ip){return true;}
 		]
 	 */
 	problems:[
@@ -1257,6 +1307,10 @@ ProblemPanel.prototype={
 				value:"Hello, world!",
 				speed:100,
 				input:null,
+				check:function(ip){
+					//return /Hello, world![\s\n]*$/.test(ip.output);
+					return /H/.test(ip.output);
+				},
 			},
 		],
 	],
@@ -1285,6 +1339,116 @@ CountdownPanel.prototype=Game.util.extend(Panel,{
 		});
 	},
 });
+//結果パネル
+function OutcomePanel(game,event,param){
+	this.str=param.outcome;	//結果
+	this.user=param.user;
+	//各ユーザーに対してのみ表示
+	this._private=this.user;
+	this.index=0;	//選択
+	this.decided=false;	//決定したか
+}
+OutcomePanel.prototype={
+	init:function(game,event){
+		var user=this.user, ev=user.event;
+		var t=this;
+		ev.on("move",handler);
+		ev.on("decide",function(){
+			ev.removeListener("move",handler);
+		});
+		event.on("select",function(delta){
+			if(t.decided)return;
+			if(delta===-1){
+				if(--t.index<0){
+					t.index=0;
+				}
+			}else if(delta===1){
+				if(++t.index>1){
+					t.index--;
+				}
+			}
+		});
+		event.on("decide",function(){
+			//決定した　出題パネルを出す
+			if(t.decided)return;
+			t.decided=true;
+		});
+		function handler(obj){
+			//moveを流用
+			if(obj.x===0){
+				event.emit("select",obj.y);
+			}else if(obj.x===1){
+				//決定
+				event.emit("decide",t.index);
+			}
+		}
+	},
+	renderTop:true,
+	renderInit:function(view){
+		var sec=document.createElement("section");
+		sec.classList.add("panel");
+		sec.classList.add("levelselect");
+		var h1=document.createElement("h1");
+		h1.textContent=this.str;
+		sec.appendChild(h1);
+		var p=document.createElement("p");
+		p.classList.add("selectioninfo");
+		//p.textContent=;
+		sec.appendChild(p);
+		var ul=document.createElement("ul");
+		var arr=["もう一戦","やめる"];
+		for(var i=0, item;item=arr[i++];){
+			var li=document.createElement("li");
+			li.textContent=item;
+			ul.appendChild(li);
+		}
+		sec.appendChild(ul);
+		return sec;
+	},
+	render:function(view){
+		var sec=view.getItem();
+		var p=sec.getElementsByClassName("selectioninfo")[0];
+		var ul=sec.getElementsByTagName("ul")[0];
+		if(this.decided){
+			//決まっている
+			p.textContent="対戦相手の選択を待機中です…";
+			ul.hidden=true;
+		}else{
+			p.textContent="上下キー（選択）と右キー（決定）で選択して下さい";
+			ul.hidden=false;
+			var lis=ul.getElementsByTagName("li");
+			for(var i=0,l=lis.length;i<l;i++){
+				if(i===this.index){
+					lis[i].classList.add("selected");
+				}else{
+					lis[i].classList.remove("selected");
+				}
+			}
+		}
+	},
+};
+//汎用おしらせパネル
+function InfoPanel(game,event,param){
+	this.str=param.str;
+	//time: 一定時間で消滅
+	if(param.time){
+		setTimeout(function(){
+			event.emit("die");
+		},param.time);
+	}
+	if(param.user){
+		this._private=param.user;
+	}
+}
+InfoPanel.prototype=Game.util.extend(Panel,{
+	renderInit:function(view){
+		var div=Panel.prototype.renderInit.apply(this,arguments);
+		div.classList.remove("simple");
+		div.classList.add("importantpanel");
+		return div;
+	},
+});
+
 //ゲーム初期化
 var field=null;
 game.init(Game.ClientDOMView);
@@ -1332,11 +1496,15 @@ game.useUser(Game.DOMUser,function(user){
 
 //special events
 //game.internal(function(){
-game.event.on("gamestart",function(){
+game.event.on("gamestart",function handler(){
+	game.clean();
+	game.event.removeAllListeners();
+	game.event.on("gamestart",handler);	//zombie handler!!
 	game.add(WaitingPanel);
 	var field=game.add(Field);
 
 	game.event.on("entry",function(user){
+		user.event.removeAllListeners();
 		game.session(user);
 		var cursor=field.setupCursor(user);
 		if(!cursor)return;
@@ -1348,6 +1516,72 @@ game.event.on("gamestart",function(){
 			game.add(LevelPanel,{
 				user:field.cursors[0].user,
 				field:field,
+			});
+		}
+	});
+	game.event.on("success",function(ip){
+		//このユーザーが成功したぞ！
+		var user=ip.user;
+		var field=ip.field;
+		var arr=field.cursors;
+		var decide_count=0;	//設定終了
+		var positive=true;	//次参加するか
+		var panels=[];	//パネル
+		for(var i=0,l=arr.length;i<l;i++){
+			var o;
+			if(arr[i].user===user){
+				//勝った
+				panels[i]=o=game.add(OutcomePanel,{
+					outcome:"勝ち",
+					user:user,
+				});
+			}else{
+				//負けた
+				panels[i]=o=game.add(OutcomePanel,{
+					outcome:"負け",
+					user:arr[i].user,
+				});
+			}
+			o.event.once("decide",function(sel){
+				decide_count++;	//決定した
+				if(sel===1){
+					//やめる
+					positive=false;
+				}
+				//集計する
+				if(decide_count===arr.length){
+					//揃った
+					if(positive){
+						//続投だ!!
+						field.event.emit("initField");
+						for(var j=0;j<l;j++){
+							panels[j].event.emit("die");
+							game.event.emit("entry",arr[j].user);
+						}
+					}else{
+						//終了だ!!
+						game.event.emit("gamestart");
+						for(var j=0;j<l;j++){
+							//次ゲームに参加できるように
+							game.unsession(panels[j].user);
+							if(panels[j].index===0){
+								//やりたかったのに...
+								game.add(InfoPanel,{
+									str:"対戦相手は次ゲームに参加しませんでした。終了します。",
+									time:5000,
+									user:panels[j].user,
+								});
+							}else{
+								game.add(InfoPanel,{
+									str:"ゲームを終了します。",
+									time:5000,
+									user:panels[j].user,
+								});
+							}
+							//panels[j].event.emit("die");
+						}
+					}
+				}
 			});
 		}
 	});

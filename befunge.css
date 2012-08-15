@@ -19,10 +19,13 @@
 	padding-top:200px;
 	font-size:100px;
 }
-.panel.levelselect{
+.panel.levelselect, .panel.importantpanel{
 	font-size:2.4em;
 	line-height:1em;
 	text-align:left;
+}
+.panel.importantpanel{
+	z-index:15;
 }
 .levelselect li.selected{
 	color:#ff4444;
@@ -37,3 +40,14 @@
 	color:#ff4444;
 }
 
+.ipInfo{
+	width:40%;
+	padding:14px;
+	border-radius:14px;
+	display:inline-block;
+	margin-right:20px;
+	min-height:100px;
+}
+.output{
+	word-wrap:break-word;
+}

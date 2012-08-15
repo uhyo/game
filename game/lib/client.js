@@ -216,7 +216,7 @@ function executeJSON(game,obj){
 		game.objectsmap[obj._id]=o;
 		//! 要整理!!
 		//なんとまだinitしていない
-		o._constructor.call(o,game,o.event,o._param,game.view);
+		//o._constructor.call(o,game,o.event,o._param,game.view);
 		//現在のパラメータ反映
 		setProperties(o,obj.properties);
 		if(o.init)o.init(game,o.event,o._param,game.view);

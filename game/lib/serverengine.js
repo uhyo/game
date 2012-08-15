@@ -276,7 +276,7 @@ ServerTransporter.prototype={
 	gameevent:function(name,args){
 		this.broadcast("gameevent",{
 			name:name,
-			args:args,
+			args:this.game.jsonFilter(args,false),
 		});
 	},
 	userevent:function(user,name,args){
