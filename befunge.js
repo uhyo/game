@@ -1474,6 +1474,30 @@ ProblemPanel.prototype={
 				},
 			},
 		],
+		//Hard
+		[
+			{
+				type:"expressed",
+				value:["数字を1つ入力するので、その数字から始まって初めて1になるまでのコラッツ数列を出力しなさい",
+				"各数字は1つのスペースで区切ること。最後は1で終わること",
+				"ただしコラッツ数列とは、ある項が偶数なら次の項はその項を2で割った数であり、奇数なら次の項はその項に3をかけて1を足した数であるような数列である"],
+				speed:16,
+				input:[{$type:"number",min:19,max:31}],
+				check:function(ip){
+					var int=parseInt(ip.input);
+					//答えを計算
+					var result=[int];
+					while(int>1){
+						if(int%2===0)int/=2;
+						else int=3*int+1;
+						result.push(int);
+					}
+					var st=result.join(" ");
+					var res=ip.output.match(/^(.+?)[\s\n]*$/);
+					return res && res[1]===st;
+				},
+			},
+		],
 	],
 };
 //カウントダウンパネル
