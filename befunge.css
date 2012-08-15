@@ -51,3 +51,9 @@
 .output{
 	word-wrap:break-word;
 }
+.output kbd.number{
+	color:#0000ff;
+}
+.output kbd.string{
+	color:#ff0000;
+}

@@ -255,6 +255,33 @@ Field.prototype={
 				vobj={x:-1,y:0};
 				break;
 		}
+		//入力を決定する
+		var input="";
+		var problem=this.problem.getProblem();
+		console.log(problem.input);
+		if(problem.input){
+			if(Array.isArray(problem.input)){
+				problem.input.forEach(function(x){
+					if("object"===typeof x){
+						if(x.$type==="number"){
+							//数値だ
+							var min=x.min-0, max=x.max-0;
+							//最大最小が決まっている
+							input+=String(Math.floor(Math.random()*(max+1-min)+min))+"\n";
+						}else if(x.$type==="string"){
+							//文字列
+							if("function"===typeof x.value){
+								input+=x.value();
+							}
+						}
+					}else{
+						input+=x+"\n";
+					}
+				});
+			}
+			console.log(input);
+		}
+
 		var pos=game.add(Vector,posobj);
 		var v=game.add(Vector,vobj);
 		var ip=game.add(IP,{
@@ -265,6 +292,7 @@ Field.prototype={
 			velocity:v,
 			stack:game.add(Stack),
 			storageOffset:game.add(Vector,{x:0,y:0}),
+			input:input,
 		});
 		this.event.emit("addIP",ip);
 		ip.run();
@@ -488,6 +516,8 @@ function IP(game,event,param){
 	this.output="";	//出力
 	this.mode="normal";
 	this.success=true;	//失敗したらfalseになる
+	this.input=param.input;	//入力が全部決まっている（文字列）
+	this.inputIndex=0;	//どこまで入力したか
 }
 IP.prototype=Game.util.extend(Cursor,{
 	init:function(game,event,param){
@@ -844,10 +874,35 @@ IP.prototype=Game.util.extend(Cursor,{
 					this.event.emit("outputChar",st.pop());
 				}else if(ch==="&"){
 					//Input Decimal
-					st.push(0);
+					//st.push(0);
+					var inputStr=this.input.slice(this.inputIndex);
+					var index=inputStr.indexOf("\n");
+					if(index>=0){
+						//そこまで入力
+						var int=inputStr.slice(0,index);
+						this.inputIndex+=index+1;	//改行まで取り除く
+						st.push(parseInt(int) || 0);
+					}else{
+						//全部入力
+						st.push(parseInt(inputStr) || 0);
+						this.inputIndex=this.input.length;	//もう無い
+					}
 				}else if(ch==="~"){
 					//Input Character
-					st.push(10);
+					//st.push(10);
+					var input=this.input[this.inputIndex];
+					if(input==="\n"){
+						st.push(10);
+					}else if(input){
+						st.push(input.charCodeAt(0));
+						this.inputIndex++;
+						if(this.input[this.inputIndex]==="\n"){
+							//改行もセットでとばせる（1つのみ）
+							this.inputIndex++;
+						}
+					}else{
+						st.push(10);
+					}
 				}//File Input/Output
 				else if(ch==="i"){
 					//Input File
@@ -1245,8 +1300,6 @@ ProblemPanel.prototype={
 		sec.appendChild(h1);
 		//問題形式に応じて作る
 		var problem=this.getProblem();
-		var p=document.createElement("p");
-		sec.appendChild(p);
 		switch(problem.type){
 			case "simpleString":
 				//文字列出力
@@ -1254,8 +1307,20 @@ ProblemPanel.prototype={
 				code.classList.add("order");
 				code.style.display="block";
 				code.textContent='"'+problem.value+'"';
+				var p=document.createElement("p");
 				p.appendChild(code);
 				p.appendChild(document.createTextNode("を出力しなさい"));
+				sec.appendChild(p);
+				break;
+			case "expressed":
+				//説明
+				var v=problem.value;
+				if(!Array.isArray(v))v=[v];
+				v.forEach(function (x){
+					var p=document.createElement("p");
+					p.appendChild(document.createTextNode(x));
+					sec.appendChild(p);
+				});
 				break;
 		}
 		//入力
@@ -1270,7 +1335,25 @@ ProblemPanel.prototype={
 		}else{
 			var pre2=document.createElement("pre");
 			pre2.classList.add("output");
-			pre2.textContent=input.join("\n");
+			if(Array.isArray(input)){
+				input.forEach(function(x){
+					var kbd=document.createElement("kbd");
+					if("object"===typeof x){
+						if(x.$type==="number"){
+							//数字入力だ
+							kbd.classList.add("number");
+							kbd.textContent="数字\n";
+						}else if(x.$type==="string"){
+							kbd.classList.add("string");
+							kbd.textContent="文字列\n";
+						}
+					}else{
+						//ただの文字列?
+						kbd.textContent=x+"\n";
+					}
+					pre2.appendChild(kbd);
+				});
+			}
 			sec.appendChild(pre2);
 		}
 		return sec;
@@ -1297,20 +1380,97 @@ ProblemPanel.prototype={
 		input Array:[
 		speed: 200,	//IP動作スピード[s/回]
 		string,string,...
-		check:function(ip){return true;}
+		check:function(ip,input=[...]){return true;}
 		]
 	 */
 	problems:[
 		//Easy
 		[
+		//Hello, world!を出力
 			{
 				type:"simpleString",
 				value:"Hello, world!",
-				speed:100,
+				speed:33,
 				input:null,
 				check:function(ip){
-					//return /Hello, world![\s\n]*$/.test(ip.output);
-					return /H/.test(ip.output);
+					return /Hello, world![\s\n]*$/.test(ip.output);
+				},
+			},
+			{
+				type:"expressed",
+				value:"スタックに30から1まで順番に積みなさい",
+				speed:16,
+				input:null,
+				check:function(ip){
+					var st=ip.stack.stack;	//TOSS
+					return st.length===30 && st.every(function(x,i){
+						return x===30-i;
+					});
+				},
+			},
+		],
+		//Normal
+		[
+			{
+				type:"expressed",
+				value:["数字を1つ入力するので、1からその数字まで足した結果を出力しなさい",
+				"（結果の末尾にスペースが残っていてもよい）"],
+				speed:16,
+				input:[{$type:"number",min:30,max:40}],
+				check:function(ip){
+					var int=parseInt(ip.input);
+					//答えを計算
+					var sum=0;
+					for(var i=1;i<=int;i++){
+						sum+=i;
+					}
+					var result=ip.output.match(/^(\d+)[\s\n]*$/);
+					if(result && result[1]===String(sum)){
+						return true;
+					}
+					return false;
+				},
+			},
+			{
+				type:"expressed",
+				value:["文字をいくつか入力するので、それぞれの文字についてアルファベットの大文字なら小文字に変換して出力しなさい",
+				"その他の文字はそのまま出力しなさい","ただし、入力の終端はEnter（文字コード10）である"],
+				speed:16,
+				input:[{
+					$type:"string",
+					value:function(){
+						var length=Math.floor(Math.random()*4+4);
+						var result="";
+						for(var i=0;i<length;i++){
+							if(Math.random()<0.5){
+								//大文字
+								result+=String.fromCharCode(Math.floor(Math.random()*26)+0x41);
+							}else if(Math.random()<0.5){
+								//小文字
+								result+=String.fromCharCode(Math.floor(Math.random()*26)+0x61);
+							}else{
+								result+=String.fromCharCode(Math.floor(Math.random()*17)+0x30);
+							}
+						}
+						return result;
+					},
+				}],
+				check:function(ip){
+					var v=ip.input;
+					//小文字に変換
+					var result="";
+					for(var i=0,l=v.length;i<l;i++){
+						if("A"<=v[i] && v[i]<="Z"){
+							result+=String.fromCharCode(v.charCodeAt(i)+0x20);
+						}else{
+							result+=v[i];
+						}
+					}
+					var res=ip.output.match(/^(.+)\n?$/);
+					if(res && res[1]==result){
+						return true;
+					}
+					return false;
 				},
 			},
 		],
