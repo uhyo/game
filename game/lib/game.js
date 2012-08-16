@@ -27,7 +27,6 @@ exports.Server.prototype=Game.util.extend(ev.EventEmitter,{
 	serve:function(type,filename){
 		//サーブするファイルを追加
 		this.serves.push({type:type,filename:path.join(path.dirname(require.main.filename),filename)});
-		console.log(this.serves);
 	},
 	route:function(name,func){
 		this.routeOptions[name]=func;

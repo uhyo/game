@@ -301,17 +301,7 @@ SpitBoard.prototype={
 	},
 	newcard:function(){
 		//新しいの一枚を上に乗せる
-		var flag=false;	//変化があったか
-		room.fields.forEach(function(f,i){
-			if(f.deck.cards.length>0){
-				var zone=room.cards[i];
-				zone.event.emit("add",f.deck.last());
-				f.deck.event.emit("pop");
-				flag=true;
-			}
-		});
-		if(flag)stopstop();
-		else judge();
+		game.event.emit("spit");
 	},
 };
 //画面を被うパネル
@@ -361,60 +351,136 @@ game.init(Game.ClientDOMView,{
 });
 //設定
 game.playersNumber=2;
-var room;
-function newgame(){
+game.event.on("gamestart",function handler(){
 	game.clean();
-	room=game.add(Room);
-	//集まるのを待つパネル
+	game.event.removeAllListeners();
+	game.event.on("gamestart",handler);	//zombie handler!!!
+	var room=game.add(Room);
 	game.add(WaitingPanel);
-}
-newgame();
 
-//手詰まり判定
-function stopstop(){
-	if(room.fields.every(function(f){
-		return !room.isFieldSustainable(f);
-	})){
-		//もう動けない
-		var board=game.add(SpitBoard,{});
-		board.startcount();
-	}
-}
-//決着
-function judge(){
-	var flag=0;
-	for(var i=0,l=room.fields.length;i<l;i++){
-		var f=room.fields[i];
-		if(f.deck.cards.length===0){
-			//空になった
-			flag++;
-		}	
-	}
-	if(flag===0){
-		//まだ決着がついていない
-		return;
-	}
-	for(var i=0,l=room.fields.length;i<l;i++){
-		var f=room.fields[i];
-		if(flag>1){
-			//引き分けだ
-			game.add(OutcomePanel,{
-				user:f.user,
-				outcome:"引き分け",
-			});
-		}else{
-			game.add(OutcomePanel,{
-				user:f.user,
-				outcome:(f.deck.cards.length===0 ? "勝ち":"負け"),
-			});
+	game.event.on("entry",function(user,opt){
+		game.session(user);	//セッションを保持させる
+
+		//開始時は4枚ドローする
+		game.event.on("newplayer",function(number){
+			var count=0;
+			if(number>=game.playersNumber){
+				//ドロー開始
+				draw();
+			}
+			function draw(){
+				user.event.emit("draw");
+				if(++count<4){
+					setTimeout(draw,180);
+				}
+			}
+		});
+
+		var field=game.add(Field,{user:user});
+		room.event.emit("addfield",field);
+		var deck=room.getDeck(game,field);
+		field.event.emit("setdeck",deck);
+		var view=game.view;
+		//新しい人がきた
+		game.event.emit("newplayer",room.fields.length);
+		//ドロー
+		user.event.on("draw",function(){
+			//ドローした
+			if(room.ended)return;
+			if(deck.cards.length>0 && field.isBlank()){
+				field.event.emit("add",deck.last());
+				deck.event.emit("pop");
+				game.event.emit("judge");
+				game.event.emit("stopstop");
+			}
+		});
+		//手札を移動
+		user.event.on("movehand",function(card,zone){
+			if(room.ended)return;
+			//console.log(card,zone);
+			if(!zone)return;
+			var h=field.hands;
+			//手札にあるかどうか調べる
+			var handindex;
+			for(var i=0;i<h.length;i++){
+				if(h[i]===card){
+					handindex=i;
+					break;
+				}
+			}
+			if(handindex==null)return;
+			if(zone.card.isNext(card)){
+				//カードを出す
+				field.event.emit("removehand",handindex);
+				zone.event.emit("add",card);
+			}
+		});
+		//終了したらもう知らない
+		game.event.once("end",function(){
+			game.unsession(user);
+		});
+	});
+	//決着
+	game.event.on("judge",function(){
+		var flag=0;
+		for(var i=0,l=room.fields.length;i<l;i++){
+			var f=room.fields[i];
+			if(f.deck.cards.length===0){
+				//空になった
+				flag++;
+			}	
 		}
-	}
-	game.event.emit("end");
-	//8秒後にニューゲーム
-	setTimeout(function(){
-		newgame();
-	},8000);
-}
+		if(flag===0){
+			//まだ決着がついていない
+			return;
+		}
+		for(var i=0,l=room.fields.length;i<l;i++){
+			var f=room.fields[i];
+			if(flag>1){
+				//引き分けだ
+				game.add(OutcomePanel,{
+					user:f.user,
+					outcome:"引き分け",
+				});
+			}else{
+				game.add(OutcomePanel,{
+					user:f.user,
+					outcome:(f.deck.cards.length===0 ? "勝ち":"負け"),
+				});
+			}
+		}
+		game.event.emit("end");
+		//8秒後にニューゲーム
+		setTimeout(function(){
+			game.event.emit("gamestart");
+		},8000);
+	});
+	//手詰まり判定
+	game.event.on("stopstop",function(){
+		if(room.fields.every(function(f){
+			return !room.isFieldSustainable(f);
+		})){
+			//もう動けない
+			var board=game.add(SpitBoard,{});
+			board.startcount();
+		}
+	});
+	//新しいカードを乗せる
+	game.event.on("spit",function(){
+		var flag=false;	//変化があったか
+		room.fields.forEach(function(f,i){
+			if(f.deck.cards.length>0){
+				var zone=room.cards[i];
+				zone.event.emit("add",f.deck.last());
+				f.deck.event.emit("pop");
+				flag=true;
+			}
+		});
+		if(flag)game.event.emit("stopstop");
+		else game.event.emit("judge");
+	});
+});
+
 
 game.useUser(Game.DOMUser,function(user){
 	//ドラッグ
@@ -424,75 +490,5 @@ game.useUser(Game.DOMUser,function(user){
 			user.event.emit("movehand",from,to);
 		}
 	},false);
-});
-game.event.on("entry",function(user,opt){
-	/*var e=user.event;
-	user.keyWait([37,38,39,40]);
-	e.on("keydown",function(ev){
-		h.event.emit("add",game.add(Card,{
-			suit:Math.floor(Math.random()*4),
-			rank:Math.floor(Math.random()*13+1),
-		}));
-	});*/
-	game.session(user);	//セッションを保持させる
-
-	//開始時は4枚ドローする
-	game.event.on("newplayer",function(number){
-		var count=0;
-		if(number>=game.playersNumber){
-			//ドロー開始
-			draw();
-		}
-		function draw(){
-			user.event.emit("draw");
-			if(++count<4){
-				setTimeout(draw,180);
-			}
-		}
-	});
-
-	var field=game.add(Field,{user:user});
-	room.event.emit("addfield",field);
-	var deck=room.getDeck(game,field);
-	field.event.emit("setdeck",deck);
-	var view=game.view;
-	//新しい人がきた
-	game.event.emit("newplayer",room.fields.length);
-	//ドロー
-	user.event.on("draw",function(){
-		//ドローした
-		if(room.ended)return;
-		if(deck.cards.length>0 && field.isBlank()){
-			field.event.emit("add",deck.last());
-			deck.event.emit("pop");
-			judge();
-			stopstop();
-		}
-	});
-	//手札を移動
-	user.event.on("movehand",function(card,zone){
-		if(room.ended)return;
-		//console.log(card,zone);
-		if(!zone)return;
-		var h=field.hands;
-		//手札にあるかどうか調べる
-		var handindex;
-		for(var i=0;i<h.length;i++){
-			if(h[i]===card){
-				handindex=i;
-				break;
-			}
-		}
-		if(handindex==null)return;
-		if(zone.card.isNext(card)){
-			//カードを出す
-			field.event.emit("removehand",handindex);
-			zone.event.emit("add",card);
-		}
-	});
-	//終了したらもう知らない
-	game.event.once("end",function(){
-		game.unsession(user);
-	});
 });
 game.start();
