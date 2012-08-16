@@ -1211,6 +1211,7 @@ LevelPanel.prototype={
 			var problem=game.add(ProblemPanel,{
 				level:t.index,
 				field:t.field,
+				number:Math.floor(Math.random()*ProblemPanel.prototype.problems[t.index].length),
 			});
 			t.field.event.emit("addProblem",problem);
 			event.emit("die");
@@ -1282,7 +1283,8 @@ function ProblemPanel(game,event,param){
 	this.active=true;	//問題を全面に表示されるかどうか
 	//問題決定
 	var len=this.problems[this.level].length;
-	this.number=Math.floor(Math.random()*len);
+	//this.number=Math.floor(Math.random()*len);
+	this.number=param.number;
 }
 ProblemPanel.prototype={
 	init:function(game,event){

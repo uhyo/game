@@ -65,22 +65,24 @@ Card.prototype={
 };
 //場
 function Field(game,event,param){
-	var t=this;
-	t.hands=[];
-	t.deck=null;
-	t.user=param.user;	//ユーザーをとっておく
-	event.on("add",function(obj){
-		t.hands.push(obj);
-	});
-	event.on("removehand",function(index){
-		t.hands.splice(index,1);
-	});
-	event.on("setdeck",function(deck){
-		t.deck=deck;
-	});
+	this.hands=[];
+	this.deck=null;
+	this.user=param.user;	//ユーザーをとっておく
 }
 
 Field.prototype={
+	init:function(game,event){
+		var t=this;
+		event.on("add",function(obj){
+			t.hands.push(obj);
+		});
+		event.on("removehand",function(index){
+			t.hands.splice(index,1);
+		});
+		event.on("setdeck",function(deck){
+			t.deck=deck;
+		});
+	},
 	//render系メソッド
 	renderInit:function(){
 		return document.createElement("div");
@@ -106,19 +108,22 @@ Field.prototype={
 };
 //山札（飾り）
 function Deck(game,event,param){
-	var t=this;
-	t.cards=param.cards || [];
-	t.user=param.user;	//ユーザー情報を保存
-	event.on("pop",function(){
-		t.cards.pop();
-	});
+	this.cards=param.cards || [];
+	this.user=param.user;	//ユーザー情報を保存
 }
 Deck.prototype={
+	init:function(game,event){
+		var t=this;
+		event.on("pop",function(){
+			t.cards.pop();
+		});
+	},
 	renderInit:function(view){
 		var t=this;
 		var div=document.createElement("div");
 		div.classList.add("deck");
 		//ドローされたときの情報
+		debugger;
 		div.addEventListener("click",function(){
 			t.user.event.emit("draw");
 		},false);
@@ -139,26 +144,28 @@ Deck.prototype={
 //全体
 function Room(game,event,param){
 	//フィールドを追加
-	var t=this;
-	t.ended=false;	//終了フラグ
-	t.fields=[];
+	this.ended=false;	//終了フラグ
+	this.fields=[];
 	//フィールドに出ている
-	t.cards=[];
+	this.cards=[];
 	for(var i=0;i<2;i++){
-		t.cards.push(game.add(CardZone,{index:i}));
+		this.cards.push(game.add(CardZone,{index:i}));
 	}
-	event.on("addfield",function(field){
-		if(t.fields.length<game.playersNumber){
-			//まだ入れる
-			t.fields.push(field);
-		}
-	});
-	//終了を検知する
-	game.event.on("end",function(){
-		t.ended=true;
-	});
 }
 Room.prototype={
+	init:function(game,event){
+		var t=this;
+		event.on("addfield",function(field){
+			if(t.fields.length<game.playersNumber){
+				//まだ入れる
+				t.fields.push(field);
+			}
+		});
+		//終了を検知する
+		game.event.on("end",function(){
+			t.ended=true;
+		});
+	},
 	renderTop:true,	//トップに描画されるオブジェクト
 	renderInit:function(){
 		return document.createElement("div");
@@ -202,8 +209,8 @@ Room.prototype={
 				result.push(game.add(Card,{suit:suit,rank:i}));
 			}
 		});
-		//return game.add(Deck,{cards:Game.util.shuffleArray(result)});
-		return game.add(Deck,{user:field.user,cards:Game.util.shuffleArray(result).slice(0,6)});
+		return game.add(Deck,{cards:Game.util.shuffleArray(result),user:field.user});
+		//return game.add(Deck,{user:field.user,cards:Game.util.shuffleArray(result).slice(0,6)});
 	},
 	//--- view用
 	getZoneindex:function(view,node){
@@ -225,14 +232,16 @@ Room.prototype={
 };
 //カードを乗せる場所
 function CardZone(game,event,param){
-	var t=this;
-	t.index=param.index;	//roomの中の場所
-	t.card=game.add(Card,{rank:null,suit:null});	//最初は空
-	event.on("add",function(card){
-		t.card=card;
-	});
+	this.index=param.index;	//roomの中の場所
+	this.card=game.add(Card,{rank:null,suit:null});	//最初は空
 }
 CardZone.prototype={
+	init:function(game,event){
+		var t=this;
+		event.on("add",function(card){
+			t.card=card;
+		});
+	},
 	renderInit:function(){
 		var div= document.createElement("div");
 		div.dropzone="move";
@@ -251,16 +260,18 @@ CardZone.prototype={
 }
 //新しくカードをのせるボード
 function SpitBoard(game,event,param){
-	var t=this;
 	this.strs=["いっ","せー","のー","で"];
-	t.index=0;
+	this.index=0;
 
-	event.on("count",function(c){
-		//カウント
-		t.index=c;
-	});
 }
 SpitBoard.prototype={
+	init:function(game,event){
+		var t=this;
+		event.on("count",function(c){
+			//カウント
+			t.index=c;
+		});
+	},
 	renderTop:true,
 	renderInit:function(){
 		var div=document.createElement("div");
@@ -322,15 +333,18 @@ Panel.prototype={
 //待機中の表示
 function WaitingPanel(game,event,param){
 	Panel.apply(this,arguments);
-	game.event.on("newplayer",function(number){
-		//人数に達したら消える
-		if(number>=game.playersNumber){
-			event.emit("die");
-		}
-
-	});
 }
 WaitingPanel.prototype=Game.util.extend(Panel,{
+	init:function(game,event){
+		var t=this;
+		game.event.on("newplayer",function(number){
+			//人数に達したら消える
+			if(number>=game.playersNumber){
+				event.emit("die");
+			}
+
+		});
+	},
 	str:"現在募集中です",
 });
 function OutcomePanel(game,event,param){
@@ -405,7 +419,6 @@ function judge(){
 game.useUser(Game.DOMUser,function(user){
 	//ドラッグ
 	user.ondrag(function(from,to){
-		console.log("drag",from,to);
 		if(from instanceof Card && to instanceof CardZone){
 			//カードを出した
 			user.event.emit("movehand",from,to);
@@ -438,7 +451,6 @@ game.event.on("entry",function(user,opt){
 		}
 	});
 
-	var deck=game.add(Deck,{});
 	var field=game.add(Field,{user:user});
 	room.event.emit("addfield",field);
 	var deck=room.getDeck(game,field);
