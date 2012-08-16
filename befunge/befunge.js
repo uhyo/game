@@ -258,7 +258,7 @@ Field.prototype={
 		//入力を決定する
 		var input="";
 		var problem=this.problem.getProblem();
-		console.log(problem.input);
+		//console.log(problem.input);
 		if(problem.input){
 			if(Array.isArray(problem.input)){
 				problem.input.forEach(function(x){
@@ -1766,7 +1766,7 @@ game.event.on("gamestart",function handler(){
 							//次ゲームに参加できるように
 							game.unsession(panels[j].user);
 							//もういいや別に
-							use.removeAllListeners('disconnect');
+							user.removeAllListeners('disconnect');
 							if(panels[j].index===0){
 								//やりたかったのに...
 								game.add(InfoPanel,{

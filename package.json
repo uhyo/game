@@ -2,5 +2,11 @@
   "name":"game",
   "version":"0.0.1",
   "dependencies":{
+	  "express":">=3.0",
+	  "socket.io":"~0.9",
+	  "jade":">=0.26"
+  },
+  "engines":{
+	  "node":"~0.8"
   }
 }

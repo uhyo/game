@@ -388,7 +388,8 @@ Game.ClientCanvasView.prototype=Game.util.merge(new Game.ClientView,{
 		var c=this.canvas, ctx=c.getContext('2d');
 		ctx.clearRect(0,0,c.width,c.height);
 		for(var i=0,l=objects.length;i<l;i++){
-			objects[i].event.emit("render",c,ctx);
+			//objects[i].event.emit("render",c,ctx);
+			if(objects[i].render)objects[i].render(c,ctx);
 		}
 	},
 });

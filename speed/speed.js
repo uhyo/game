@@ -350,7 +350,7 @@ OutcomePanel.prototype=Game.util.extend(Panel,{
 game.init(Game.ClientDOMView,{
 });
 //設定
-game.playersNumber=2;
+game.playersNumber= game.env==="standalone" ? 1 : 2;
 game.event.on("gamestart",function handler(){
 	game.clean();
 	game.event.removeAllListeners();

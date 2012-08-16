@@ -77,13 +77,17 @@ function MyMachine(game,event,param){
 
 	ke.on("keydown",function(e){
 		var c=e.keyCode;
+		event.emit("keydown",c);
+	});
+	event.on("keydown",function(c){
 		key[c]=true;
-		
 	});
 	ke.on("keyup",function(e){
-		key[e.keyCode]=false;
+		event.emit("keyup",e.keyCode);
 	});
-	
+	event.on("keyup",function(c){
+		key[c]=false;
+	});
 	//切断時
 	ke.on("disconnect",function(){
 		//自殺
@@ -127,18 +131,6 @@ function MyMachine(game,event,param){
 		if(t.x>=game.width-t.width)t.x=game.width-t.width;
 		if(t.y>=game.height-t.height)t.y=game.height-t.height;
 	});
-	event.on("render",function(canvas,ctx){
-		//描画
-		ctx.fillStyle="#000000";
-		ctx.font=t.height+"px sans-serif";
-		ctx.fillText("自分",t.x,t.y+t.height);
-		
-		//HPバー
-		ctx.fillStyle="#dddddd";
-		ctx.fillRect(t.x+2,t.y-2,t.width,4);
-		ctx.fillStyle="#ee4444";
-		ctx.fillRect(t.x+2,t.y-2,t.width*(t.hp/t.maxhp),4);
-	});
 	
 	//外部干渉
 	event.on("damage",function(power){
@@ -160,6 +152,18 @@ function MyMachine(game,event,param){
 	});
 }
 MyMachine.prototype=Game.util.extend(Rect,{
+	render:function(canvas,ctx){
+		//描画
+		ctx.fillStyle="#000000";
+		ctx.font=this.height+"px sans-serif";
+		ctx.fillText("自分",this.x,this.y+this.height);
+		
+		//HPバー
+		ctx.fillStyle="#dddddd";
+		ctx.fillRect(this.x+2,this.y-2,this.width,4);
+		ctx.fillStyle="#ee4444";
+		ctx.fillRect(this.x+2,this.y-2,this.width*(this.hp/this.maxhp),4);
+	},
 	width:36,
 	height:20,
 	maxhp:100,
@@ -185,14 +189,14 @@ function Shot(game,event,param){
 		//毎フレームの動作
 		t.x+=t.speedx, t.y+=t.speedy;
 	});
-	event.on("render",function(canvas,ctx){
-		//描画
-		ctx.fillStyle=t.color;
-		ctx.font=t.font;
-		ctx.fillText(t.str,t.x-8,t.y+8);
-	});
 }
 Shot.prototype=Game.util.extend(Point,{
+	render:function(canvas,ctx){
+		//描画
+		ctx.fillStyle=this.color;
+		ctx.font=this.font;
+		ctx.fillText(this.str,this.x-8,this.y+8);
+	},
 	str:"弾",
 	width:10,
 	height:10,
@@ -266,13 +270,13 @@ function EnemyBase(game,event,param){
 			game.event.emit("getscore",t.score);
 		}
 	});
-	event.on("render",function(canvas,ctx){
-		ctx.fillStyle=t.color;
-		ctx.font=t.font;
-		ctx.fillText(t.str,t.x,t.y+t.height-3);
-	});
 }
 EnemyBase.prototype=Game.util.extend(Rect,{
+	render:function(canvas,ctx){
+		ctx.fillStyle=this.color;
+		ctx.font=this.font;
+		ctx.fillText(this.str,this.x,this.y+this.height-3);
+	},
 	width:28,
 	height:28,
 	score:10,
@@ -542,15 +546,15 @@ function Item(game,event,param){
 		t.color="hsl("+(Math.floor(t.x/2)%360)+",100%,50%)";
 
 	});
-	event.on("render",function(canvas,ctx){
-		//描画
-		//console.log(t.color+" "+t.font+" "+t.str+" "+t.x+" "+t.y);
-		ctx.fillStyle=t.color;
-		ctx.font=t.font;
-		ctx.fillText(t.str,t.x-8,t.y+8);
-	});
 }
 Item.prototype=Game.util.extend(Point,{
+	render:function(canvas,ctx){
+		//描画
+		//console.log(t.color+" "+t.font+" "+t.str+" "+t.x+" "+t.y);
+		ctx.fillStyle=this.color;
+		ctx.font=this.font;
+		ctx.fillText(this.str,this.x-8,this.y+8);
+	},
 	width:40,
 	height:20,
 	speedx:4,
@@ -589,15 +593,17 @@ function Boss(game,event,param){
 	
 	var t=this;
 	
-	event.on("render",function(canvas,ctx){
-		ctx.fillStyle="#dddddd";
-		ctx.fillRect(t.x, t.y+t.height+2, t.width, 4);
-
-		ctx.fillStyle="#ff0000";
-		ctx.fillRect(t.x, t.y+t.height+2, Math.floor(t.width*t.hp/t.maxhp), 4);
-	});
 }
 Boss.prototype=Game.util.extend(EnemyBase,{
+	render:function(canvas,ctx){
+		//HP bar
+		EnemyBase.prototype.render.apply(this,arguments);
+		ctx.fillStyle="#dddddd";
+		ctx.fillRect(this.x, this.y+this.height+2, this.width, 4);
+
+		ctx.fillStyle="#ff0000";
+		ctx.fillRect(this.x, this.y+this.height+2, Math.floor(this.width*this.hp/this.maxhp), 4);
+	},
 	font:"40px serif",
 	color:"#006600",
 	str:"ボス",
@@ -1061,14 +1067,16 @@ function ScoreDisplay(game,event,param){
 		//t.score+=delta;
 		event.emit("getscore",delta);
 	});
-	event.on("render",function(canvas,ctx){
-		ctx.fillStyle="#000000";
-		ctx.font="16px serif";
-		ctx.fillText("SCORE: "+t.score,20,50);
-	});
 	event.on("getscore",function(delta){
 		t.score+=delta;
 	});
+}
+ScoreDisplay.prototype={
+	render:function(canvas,ctx){
+		ctx.fillStyle="#000000";
+		ctx.font="16px serif";
+		ctx.fillText("SCORE: "+this.score,20,50);
+	},
 }
 //エフェクトを発行する
 function EffectProcessor(game,event,param){
@@ -1121,16 +1129,16 @@ function FadingEffect(game,event,param){
 		t.x+=t.speedx;
 		t.y+=t.speedy;
 	});
-	event.on("render",function(canvas,ctx){
-		ctx.save();
-		ctx.fillStyle=t.color;
-		ctx.font=t.font;
-		ctx.globalAlpha=1-t.age/t.life;
-		ctx.fillText(t.str,t.x,t.y);
-		ctx.restore();
-	});
 }
 FadingEffect.prototype=Game.util.extend(Effect,{
+	render:function(canvas,ctx){
+		ctx.save();
+		ctx.fillStyle=this.color;
+		ctx.font=this.font;
+		ctx.globalAlpha=1-this.age/this.life;
+		ctx.fillText(this.str,this.x,this.y);
+		ctx.restore();
+	},
 	font:"18px sans-serif",
 });
 
@@ -1143,12 +1151,14 @@ function GameOverDisplay(game,event,param){
 			event.emit("die");
 		}
 	});
-	event.on("render",function(canvas,ctx){
+}
+GameOverDisplay.prototype={
+	render:function(canvas,ctx){
 		ctx.font="72px serif";
 		ctx.fillStyle="#000000";
 		ctx.fillText("Game over",20,100);
-	});
-}
+	},
+};
 //飛んでくる
 function AnnounceDisplay(game,event,param){
 	var t=this;
@@ -1190,12 +1200,14 @@ function AnnounceDisplay(game,event,param){
 			break;
 		}
 	});
-	event.on("render",function(canvas,ctx){
-		ctx.font=t.font;
-		ctx.fillStyle=t.color;
-		ctx.fillText(t.str,t.x,t.y);
-	});
 }
+AnnounceDisplay.prototype={
+	render:function(canvas,ctx){
+		ctx.font=this.font;
+		ctx.fillStyle=this.color;
+		ctx.fillText(this.str,this.x,this.y);
+	},
+};
 //みるだけーのパネル
 function LivePanel(game,event,param){
 	var user=param.user;
@@ -1206,7 +1218,9 @@ function LivePanel(game,event,param){
 	e.on("disconnect",function(){
 		event.emit("die");
 	});
-	event.on("render",function(canvas,ctx){
+}
+LivePanel.prototype={
+	render:function(canvas,ctx){
 		ctx.fillStyle="rgba(255,0,0,0.7)";
 		ctx.font="80px fantasy";
 		ctx.fillText("LIVE",game.width-200,80);
@@ -1215,8 +1229,8 @@ function LivePanel(game,event,param){
 			ctx.fillStyle="rgba(0,0,0,0.8)";
 			ctx.fillText("参加者募集中",50,game.height-20);
 		}
-	});
-}
+	},
+};
 //エントリーのパネル
 function EntryPanel(game,event,param){
 	var user=param.user;
@@ -1236,7 +1250,9 @@ function EntryPanel(game,event,param){
 		event.emit("die");
 	});
 
-	event.on("render",function(canvas,ctx){
+}
+EntryPanel.prototype={
+	render:function(canvas,ctx){
 		ctx.fillStyle="rgba(191,191,191,0.7)";
 		ctx.fillRect(50,50,game.width-100,game.height-100);
 		ctx.fillStyle="#000000";
@@ -1247,8 +1263,9 @@ function EntryPanel(game,event,param){
 		ctx.font="24px serif";
 		ctx.fillText("操作方法: 上下左右キーで移動",100,150);
 		ctx.fillText("Zキーで弾を発射",100,180);
-	});
-}
+	},
+};
+
 //コンティニューパネル
 function ContinueCountDisplay(game,event,param){
 	this.remains=param.remains;
@@ -1263,7 +1280,9 @@ function ContinueCountDisplay(game,event,param){
 	game.event.on("newMachine",function(){
 		event.emit("die");
 	});
-	event.on("render",function(canvas,ctx){
+}
+ContinueCountDisplay.prototype={
+	render:function(canvas,ctx){
 		if(game.count(EntryPanel)>0)return;	//邪魔
 		ctx.fillStyle="rgba(191,191,191,0.7)";
 		ctx.fillRect(50,50,game.width-100,game.height-100);
@@ -1274,9 +1293,9 @@ function ContinueCountDisplay(game,event,param){
 		ctx.fillText("あと　　　　秒以内に参加しないと",100,150);
 		ctx.fillText("ゲームオーバーになります",100,180);
 		ctx.fillStyle="#ff0000";
-		ctx.fillText("　　 "+(t.remains/game.config.fps).toPrecision(3),100,150);
-	});
-}
+		ctx.fillText("　　 "+(this.remains/game.config.fps).toPrecision(3),100,150);
+	},
+};
 //fps
 function FPSChecker(game,event,param){
 	var t=this;
@@ -1389,7 +1408,7 @@ game.event.on("over",function(userMachine,user){
 			user:user,
 		});
 	});
-	game.once("initgame",stop);
+	game.event.once("initgame",stop);
 
 });
 

@@ -1,5 +1,5 @@
 //node-game
-var ev=require('events'), path=require('path'), express=require('express'), socketio=require('socket.io');
+var ev=require('events'), path=require('path'), express=require('express'), socketio=require('socket.io'), http=require('http');
 var gameengine=require('./engine.js');
 //サーバー用差分
 var Game=gameengine.Game;
@@ -34,7 +34,8 @@ exports.Server.prototype=Game.util.extend(ev.EventEmitter,{
 	initServer:function(options){
 		//init server
 		var t=this;
-		var app=this.app=express.createServer();
+		//var app=this.app=express.createServer();
+		var app=this.app=express();
 		app.configure(function(){
 			app.set('views',__dirname+'/views');
 			app.set('view engine','jade');
@@ -81,7 +82,8 @@ exports.Server.prototype=Game.util.extend(ev.EventEmitter,{
 					filename='./client.js';
 					break;
 				case 'route.js':
-					res.send("_g_routes="+JSON.stringify(t.routeOptions),{"Content-Type":"text/javascript"});
+					res.set('Content-Type','text/javascript');
+					res.send("_g_routes="+JSON.stringify(t.routeOptions));
 					return;
 			}
 			if(!filename){
@@ -99,8 +101,9 @@ exports.Server.prototype=Game.util.extend(ev.EventEmitter,{
 			}
 			res.sendfile(path.resolve(__dirname,this.serves[req.params.file].filename));
 		}.bind(this));
-		app.listen(options.port || 80);
-		var io=socketio.listen(app);
+		var srv=http.createServer(app);
+		srv.listen(options.port || 80);
+		var io=socketio.listen(srv);
 		io.set('log level',1);
 		this.initSocket(io);
 	},
